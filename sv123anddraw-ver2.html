@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1400, user-scalable=yes">
-    <title>Master Panel v60 - Hybrid Stylus</title>
+    <title>Master Panel v62 - Scroll Fixed</title>
     <style>
         :root {
             --border-color: #bbb;
@@ -24,30 +24,29 @@
             width: 1400px; 
         }
 
-        /* ツールバーを画面最前面に完全固定 */
+        /* ツールバー固定 */
         #toolbar { 
             position: fixed; 
             top: 0; 
             left: 0;
-            width: 100%; 
-            height: 50px; 
+            width: 1400px; 
+            height: 40px; 
             background: #222; 
             color: white; 
             display: flex; 
             align-items: center; 
-            padding: 0 20px; 
+            padding: 0 10px; 
             z-index: 9999; 
             box-sizing: border-box; 
-            gap: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            gap: 10px; 
         }
 
-        .draw-controls { display: none; gap: 12px; align-items: center; border-left: 1px solid #555; padding-left: 15px; }
+        .draw-controls { display: none; gap: 8px; align-items: center; border-left: 1px solid #555; padding-left: 10px; }
         
-        /* ツールバーの下に隠れないように余白を調整 */
         #wrapper { 
             width: 100%; 
-            padding-top: 60px; 
+            min-height: 100vh; 
+            padding-top: 45px; 
             box-sizing: border-box; 
             position: relative; 
         }
@@ -66,9 +65,11 @@
             pointer-events: none; 
             z-index: 1500; 
         }
+
+        /* 【重要】ここを修正！指でのスクロールを許可する設定 */
         #drawing-canvas.active { 
             pointer-events: auto; 
-            touch-action: none; 
+            touch-action: pan-x pan-y; /* ペン入力中でも指スクロールを許可 */
         }
 
         .table-title-row { background: #fff; height: 40px; }
@@ -90,25 +91,28 @@
         .col-timeline { padding: 0 !important; position: relative; }
         canvas.fixed-ui { display: block; }
 
+        /* 【復元】チェックリスト v58 完全版 */
         #final-check-list { background: #fff; padding: 20px; margin: 10px; border: 1px solid #bbb; font-size: 14px; line-height: 1.8; color: #333; position: relative; z-index: 10; width: 1300px; }
         .check-item { display: flex; align-items: flex-start; margin-bottom: 4px; }
         .check-boxes { display: flex; gap: 5px; margin-right: 12px; padding-top: 4px; }
         .check-boxes input { width: 18px; height: 18px; }
-        
-        .btn { padding: 8px 15px; font-size: 12px; cursor: pointer; border-radius: 5px; border: 1px solid #555; background: #444; color: #fff; font-weight: bold; }
+        .check-text { white-space: pre-wrap; flex: 1; }
+        .no-box { padding-left: 46px; }
+
+        .btn { padding: 4px 10px; font-size: 11px; cursor: pointer; border-radius: 3px; border: 1px solid #555; background: #444; color: #fff; }
         .btn.active { background: #f44336; border-color: #ffcdd2; }
-        .color-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; }
+        .color-btn { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; }
         .color-red { background: red; }
         .color-blue { background: blue; }
         .color-eraser { background: #fff; border: 1px solid #000; position: relative; }
-        .color-eraser::after { content: '消'; color: #000; font-size: 14px; display: flex; justify-content: center; align-items: center; height: 100%; font-weight: bold; }
-        .tool-active { outline: 3px solid yellow; outline-offset: 2px; }
+        .color-eraser::after { content: '消'; color: #000; font-size: 12px; display: flex; justify-content: center; align-items: center; height: 100%; font-weight: bold; }
+        .tool-active { outline: 3px solid yellow; outline-offset: 1px; }
     </style>
 </head>
 <body>
 
 <div id="toolbar">
-    <span style="font-weight:bold; font-size: 14px;">v60 HYBRID</span>
+    <span style="font-weight:bold;">v62 HYBRID FIX</span>
     <button id="toggle-draw" class="btn" onclick="toggleDrawingMode()">手書き OFF</button>
     <div id="draw-tools" class="draw-controls">
         <div id="btn-red" class="color-btn color-red tool-active" onclick="setTool('red')"></div>
@@ -145,7 +149,16 @@
     <div id="final-check-list">
         <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">日付、曜日、サービス、レ/M101/B01　を記入</div></div>
         <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">SV1レギュラー　　××　/　JON　/　ML先　/　QK</div></div>
-        <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">生スタ記入　SV2,SV3,SV4と同じ</div></div>
+        <div class="check-item no-box"><div class="check-text">M101　B01　　××　/　JON　/　ME先　/　QK</div></div>
+        <div class="check-item no-box"><div class="check-text">SV2レギュラー　　××　/　LFO/CHO/CH2　/Q1/Q3<br>　　　　　　　　　　　/LFF/　ML先　SV1とのAS</div></div>
+        <div class="check-item no-box"><div class="check-text">M101　B01　　××　/　LFO/CHO/CH2　/Q1/Q3<br>　　　　　　　　　　　/LFF/　ME先　SV1とのAS</div></div>
+        <div class="check-item no-box"><div class="check-text">SV3レギュラー　　××　/　SQ/　ML先　　SV1とのAS</div></div>
+        <div class="check-item no-box"><div class="check-text">M101　B01　　××　/　SQ/　ME先　　SV1とのAS</div></div>
+        <div class="check-item no-box"><div class="check-text">SV4レギュラー　　××　/　SQ/　ML先　　SV1とのAS</div></div>
+        <div class="check-item no-box"><div class="check-text">M101　B01　　××　/　SQ/　ME先　　SV1とのAS</div></div>
+        <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">生スタ記入　SV2,SV3,SV4と同じ　収録の場合もDAFアドレス同じ</div></div>
+        <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">SV3　23時台　SQ4本 24時　SQ３本</div></div>
+        <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">イン期Q3あり</div></div>
         <div style="height: 150px;"></div>
     </div>
 </div>
@@ -200,50 +213,35 @@
 
     function getPointerPos(e) {
         const rect = drawCanvas.getBoundingClientRect();
-        const scaleX = rect.width / drawCanvas.width;
-        const scaleY = rect.height / drawCanvas.height;
-        let clientX, clientY;
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-        return { x: (clientX - rect.left) / scaleX, y: (clientY - rect.top) / scaleY };
+        const scale = rect.width / drawCanvas.width;
+        return { x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale };
     }
 
-    // ハイブリッド判別ロジック
-    function handlePointerDown(e) {
+    // 手書きロジック：iPad指1本なら描画させない
+    function startDrawing(e) {
         if (!drawCanvas.classList.contains('active')) return;
         
-        // 1. Apple Pencilは即描画
-        if (e.pointerType === 'pen') {
-            isDrawing = true;
-        } 
-        // 2. 指の場合
-        else if (e.pointerType === 'touch') {
-            // スマホ(幅1000px以下)なら指1本で描画OK
-            if (window.innerWidth < 1000) {
-                isDrawing = true;
-            } else {
-                // iPadなら指はスクロールに回す
-                isDrawing = false;
-                return;
-            }
+        const isPen = e.pointerType === 'pen';
+        const isTouch = e.pointerType === 'touch';
+        const isMobile = window.innerWidth < 1000;
+
+        // iPad指1本なら描画を開始しない（ブラウザのスクロールに任せる）
+        if (isTouch && !isMobile) {
+            isDrawing = false;
+            return; 
         }
-        
-        if (isDrawing) {
-            const pos = getPointerPos(e);
-            [lastX, lastY] = [pos.x, pos.y];
+
+        isDrawing = true;
+        const pos = getPointerPos(e);
+        [lastX, lastY] = [pos.x, pos.y];
+        // 描画開始時にブラウザのスクロールを止める
+        if (isPen || (isTouch && isMobile)) {
+            drawCanvas.setPointerCapture(e.pointerId);
         }
     }
 
-    function handlePointerMove(e) {
+    function draw(e) {
         if (!isDrawing) return;
-        // iPadかつ指での移動なら描画しない
-        if (e.pointerType === 'touch' && window.innerWidth >= 1000) return;
-        
         const pos = getPointerPos(e);
         ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y);
         if (currentTool === 'erase') { 
@@ -256,11 +254,19 @@
         ctx.stroke(); [lastX, lastY] = [pos.x, pos.y];
     }
 
+    function stopDrawing(e) {
+        if (isDrawing) {
+            drawCanvas.releasePointerCapture(e.pointerId);
+            isDrawing = false;
+        }
+    }
+
     function clearCanvas() { if (confirm('手書きをすべて消去しますか？')) ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height); }
 
-    drawCanvas.addEventListener('pointerdown', handlePointerDown);
-    drawCanvas.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', () => isDrawing = false);
+    drawCanvas.addEventListener('pointerdown', startDrawing);
+    drawCanvas.addEventListener('pointermove', draw);
+    drawCanvas.addEventListener('pointerup', stopDrawing);
+    drawCanvas.addEventListener('pointercancel', stopDrawing);
 
     window.onload = function() {
         buildTables(1); buildTables(2);
