@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1400, user-scalable=yes">
-    <title>SV1, SV2 & SV3 Master Panel v58</title>
+    <title>Master Panel v60 - Hybrid Stylus</title>
     <style>
         :root {
             --border-color: #bbb;
@@ -15,7 +15,6 @@
             --line-color: #ff4444;
             --crimson: #b71c1c;
         }
-        /* ↓ 全体の横幅を表の合計サイズに固定して、縮小しても崩れないようにしたよ */
         body { 
             margin: 0; 
             background: #eee; 
@@ -24,9 +23,34 @@
             user-select: none; 
             width: 1400px; 
         }
-        #toolbar { position: fixed; top: 0; width: 100vw; height: 40px; background: #222; color: white; display: flex; align-items: center; padding: 0 10px; z-index: 2000; box-sizing: border-box; gap: 10px; }
-        .draw-controls { display: none; gap: 8px; align-items: center; border-left: 1px solid #555; padding-left: 10px; }
-        #wrapper { width: 100%; min-height: 100vh; padding-top: 40px; box-sizing: border-box; position: relative; overflow: visible; }
+
+        /* ツールバーを画面最前面に完全固定 */
+        #toolbar { 
+            position: fixed; 
+            top: 0; 
+            left: 0;
+            width: 100%; 
+            height: 50px; 
+            background: #222; 
+            color: white; 
+            display: flex; 
+            align-items: center; 
+            padding: 0 20px; 
+            z-index: 9999; 
+            box-sizing: border-box; 
+            gap: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .draw-controls { display: none; gap: 12px; align-items: center; border-left: 1px solid #555; padding-left: 15px; }
+        
+        /* ツールバーの下に隠れないように余白を調整 */
+        #wrapper { 
+            width: 100%; 
+            padding-top: 60px; 
+            box-sizing: border-box; 
+            position: relative; 
+        }
         
         .stage-section { display: flex; flex-direction: column; padding: 10px; border-bottom: 2px solid #ccc; width: fit-content; }
         .tables-container { display: flex; margin-bottom: 10px; }
@@ -35,8 +59,17 @@
         th, td { border: 1px solid var(--border-color); height: var(--row-height); text-align: center; padding: 0; box-sizing: border-box; position: relative; }
         .sv-spacer { width: 25px; }
         
-        #drawing-canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1500; }
-        #drawing-canvas.active { pointer-events: auto; touch-action: none; }
+        #drawing-canvas { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            pointer-events: none; 
+            z-index: 1500; 
+        }
+        #drawing-canvas.active { 
+            pointer-events: auto; 
+            touch-action: none; 
+        }
 
         .table-title-row { background: #fff; height: 40px; }
         .table-title-row th { text-align: left; padding-left: 8px; white-space: nowrap; border-bottom: 2px solid #333; }
@@ -49,35 +82,33 @@
         .has-l0 .l0, .has-l1 .l1, .has-l2 .l2, .has-l3 .l3 { display: block; }
         .trigger-container { display: flex; flex-direction: column; height: 100%; width: 100%; }
         .trigger-zone { height: 12px; width: 100%; cursor: pointer; }
-        select { width: 100%; height: 100%; border: none; background: transparent; appearance: none; text-align-last: center; color: var(--crimson); cursor: pointer; font-family: sans-serif; font-weight: bold; }
+        select { width: 100%; height: 100%; border: none; background: transparent; appearance: none; text-align-last: center; color: var(--crimson); cursor: pointer; font-weight: bold; }
         .pgm-half { height: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
         .col-hour { width: 30px; background: #f0f0f0; font-weight: bold; color: #555; }
         .col-check { cursor: pointer; font-size: 16px; color: var(--crimson); font-weight: bold; }
         .bg-selected { background: #fffde7; }
-        .col-timeline { padding: 0 !important; position: relative; cursor: default; }
+        .col-timeline { padding: 0 !important; position: relative; }
         canvas.fixed-ui { display: block; }
 
         #final-check-list { background: #fff; padding: 20px; margin: 10px; border: 1px solid #bbb; font-size: 14px; line-height: 1.8; color: #333; position: relative; z-index: 10; width: 1300px; }
         .check-item { display: flex; align-items: flex-start; margin-bottom: 4px; }
         .check-boxes { display: flex; gap: 5px; margin-right: 12px; padding-top: 4px; }
         .check-boxes input { width: 18px; height: 18px; }
-        .check-text { white-space: pre-wrap; flex: 1; }
-        .no-box { padding-left: 46px; }
-
-        .btn { padding: 4px 10px; font-size: 11px; cursor: pointer; border-radius: 3px; border: 1px solid #555; background: #444; color: #fff; }
+        
+        .btn { padding: 8px 15px; font-size: 12px; cursor: pointer; border-radius: 5px; border: 1px solid #555; background: #444; color: #fff; font-weight: bold; }
         .btn.active { background: #f44336; border-color: #ffcdd2; }
-        .color-btn { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; }
+        .color-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; }
         .color-red { background: red; }
         .color-blue { background: blue; }
         .color-eraser { background: #fff; border: 1px solid #000; position: relative; }
-        .color-eraser::after { content: '消'; color: #000; font-size: 12px; display: flex; justify-content: center; align-items: center; height: 100%; font-weight: bold; }
-        .tool-active { outline: 3px solid yellow; outline-offset: 1px; }
+        .color-eraser::after { content: '消'; color: #000; font-size: 14px; display: flex; justify-content: center; align-items: center; height: 100%; font-weight: bold; }
+        .tool-active { outline: 3px solid yellow; outline-offset: 2px; }
     </style>
 </head>
 <body>
 
 <div id="toolbar">
-    <span style="font-weight:bold;">v58 Zoomable</span>
+    <span style="font-weight:bold; font-size: 14px;">v60 HYBRID</span>
     <button id="toggle-draw" class="btn" onclick="toggleDrawingMode()">手書き OFF</button>
     <div id="draw-tools" class="draw-controls">
         <div id="btn-red" class="color-btn color-red tool-active" onclick="setTool('red')"></div>
@@ -114,16 +145,7 @@
     <div id="final-check-list">
         <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">日付、曜日、サービス、レ/M101/B01　を記入</div></div>
         <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">SV1レギュラー　　××　/　JON　/　ML先　/　QK</div></div>
-        <div class="check-item no-box"><div class="check-text">M101　B01　　××　/　JON　/　ME先　/　QK</div></div>
-        <div class="check-item no-box"><div class="check-text">SV2レギュラー　　××　/　LFO/CHO/CH2　/Q1/Q3<br>　　　　　　　　　　　&nbsp; &nbsp; 　/LFF/　ML先　SV1とのAS</div></div>
-        <div class="check-item no-box"><div class="check-text">M101　B01　　××　/　LFO/CHO/CH2　/Q1/Q3<br>　　　　　　&nbsp; &nbsp; &nbsp; &nbsp; 　　　　　/LFF/　ME先　SV1とのAS</div></div>
-        <div class="check-item no-box"><div class="check-text">SV3レギュラー　　××　/　SQ/　ML先　　SV1とのAS</div></div>
-        <div class="check-item no-box"><div class="check-text">M101　B01　　××　/　SQ/　ME先　　SV1とのAS</div></div>
-        <div class="check-item no-box"><div class="check-text">SV4レギュラー　　××　/　SQ/　ML先　　SV1とのAS</div></div>
-        <div class="check-item no-box"><div class="check-text">M101　B01　　××　/　SQ/　ME先　　SV1とのAS</div></div>
-        <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">生スタ記入　SV2,SV3,SV4と同じ　収録の場合もDAFアドレス同じ</div></div>
-        <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">SV3　23時台　SQ4本 24時　SQ３本</div></div>
-        <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">イン期Q3あり</div></div>
+        <div class="check-item"><div class="check-boxes"><input type="checkbox"><input type="checkbox"></div><div class="check-text">生スタ記入　SV2,SV3,SV4と同じ</div></div>
         <div style="height: 150px;"></div>
     </div>
 </div>
@@ -150,29 +172,11 @@
         }
     }
 
-    function drawOccupancy(st, day, startH, startM, endH, endM, color, text, isOutline) {
-        const rowHeight = 48; const colWidth = 35;
-        for (let h = 5; h <= 28; h++) {
-            const canvas = document.getElementById(`canvas-t${st}-${day}-${h}`); if (!canvas) continue;
-            const ctxFixed = canvas.getContext('2d');
-            let drawStart = (h === startH) ? (startM / 60) * rowHeight : (h > startH ? 0 : null);
-            let drawEnd = (h === endH) ? (endM / 60) * rowHeight : (h < endH ? rowHeight : null);
-            if (drawStart !== null && drawEnd !== null && drawEnd > drawStart) {
-                const rectX = 2; const rectW = colWidth - 4; const rectH = drawEnd - drawStart;
-                if (isOutline) { ctxFixed.strokeStyle = color; ctxFixed.lineWidth = 2; ctxFixed.strokeRect(rectX + 1, drawStart + 1, rectW - 2, rectH - 2); }
-                else { ctxFixed.fillStyle = color; ctxFixed.fillRect(rectX, drawStart, rectW, rectH); }
-                if (text && rectH > 8) { ctxFixed.font = 'bold 9px sans-serif'; ctxFixed.fillStyle = '#000'; ctxFixed.textAlign = 'center'; ctxFixed.textBaseline = 'middle'; ctxFixed.fillText(text, rectX + (rectW / 2), drawStart + (rectH / 2)); }
-            }
-        }
-    }
-
     const drawCanvas = document.getElementById('drawing-canvas');
     const ctx = drawCanvas.getContext('2d');
-    const wrapper = document.getElementById('wrapper');
     let isDrawing = false, currentTool = 'red', lastX = 0, lastY = 0;
 
     function initCanvas() {
-        // ↓ 横幅をコンテンツ全体に合わせるように修正
         drawCanvas.width = 1400; 
         drawCanvas.height = document.documentElement.scrollHeight;
         ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -196,67 +200,71 @@
 
     function getPointerPos(e) {
         const rect = drawCanvas.getBoundingClientRect();
-        // ↓ ズーム倍率を考慮した座標計算
-        const scale = rect.width / drawCanvas.width;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return { 
-            x: (clientX - rect.left) / scale, 
-            y: (clientY - rect.top) / scale 
-        };
+        const scaleX = rect.width / drawCanvas.width;
+        const scaleY = rect.height / drawCanvas.height;
+        let clientX, clientY;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        return { x: (clientX - rect.left) / scaleX, y: (clientY - rect.top) / scaleY };
     }
 
-    function startDrawing(e) {
+    // ハイブリッド判別ロジック
+    function handlePointerDown(e) {
         if (!drawCanvas.classList.contains('active')) return;
-        isDrawing = true; const pos = getPointerPos(e); [lastX, lastY] = [pos.x, pos.y];
+        
+        // 1. Apple Pencilは即描画
+        if (e.pointerType === 'pen') {
+            isDrawing = true;
+        } 
+        // 2. 指の場合
+        else if (e.pointerType === 'touch') {
+            // スマホ(幅1000px以下)なら指1本で描画OK
+            if (window.innerWidth < 1000) {
+                isDrawing = true;
+            } else {
+                // iPadなら指はスクロールに回す
+                isDrawing = false;
+                return;
+            }
+        }
+        
+        if (isDrawing) {
+            const pos = getPointerPos(e);
+            [lastX, lastY] = [pos.x, pos.y];
+        }
     }
 
-    function draw(e) {
-        if (!isDrawing) return; const pos = getPointerPos(e);
+    function handlePointerMove(e) {
+        if (!isDrawing) return;
+        // iPadかつ指での移動なら描画しない
+        if (e.pointerType === 'touch' && window.innerWidth >= 1000) return;
+        
+        const pos = getPointerPos(e);
         ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y);
-        if (currentTool === 'erase') { ctx.globalCompositeOperation = 'destination-out'; ctx.lineWidth = 20; }
-        else { ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = (currentTool === 'red' ? 'red' : 'blue'); ctx.lineWidth = 2; }
+        if (currentTool === 'erase') { 
+            ctx.globalCompositeOperation = 'destination-out'; ctx.lineWidth = 20; 
+        } else { 
+            ctx.globalCompositeOperation = 'source-over'; 
+            ctx.strokeStyle = (currentTool === 'red' ? 'red' : 'blue'); 
+            ctx.lineWidth = 2; 
+        }
         ctx.stroke(); [lastX, lastY] = [pos.x, pos.y];
     }
 
     function clearCanvas() { if (confirm('手書きをすべて消去しますか？')) ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height); }
 
-    drawCanvas.addEventListener('mousedown', startDrawing);
-    drawCanvas.addEventListener('mousemove', draw);
-    window.addEventListener('mouseup', () => isDrawing = false);
-    drawCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, {passive: false});
-    drawCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive: false});
-    drawCanvas.addEventListener('touchend', () => isDrawing = false);
+    drawCanvas.addEventListener('pointerdown', handlePointerDown);
+    drawCanvas.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', () => isDrawing = false);
 
     window.onload = function() {
         buildTables(1); buildTables(2);
-        const occ = 'rgba(100, 100, 100, 0.7)', own = 'rgba(150, 150, 150, 0.8)';
-        function renderBoxes(st) {
-            drawOccupancy(st,'mon',6,30,6,50,occ,'寺',0); drawOccupancy(st,'tue',6,30,6,50,occ,'寺',0);
-            drawOccupancy(st,'mon',7,5,7,20,own,'ニュー',1); drawOccupancy(st,'tue',7,5,7,20,own,'ニュー',1);
-            drawOccupancy(st,'mon',9,15,9,35,occ,'Qテ',0); drawOccupancy(st,'tue',9,15,9,35,occ,'Qテ',0); drawOccupancy(st,'sat',9,15,9,35,occ,'Qテ',0);
-            drawOccupancy(st,'mon',9,45,10,0,own,'Lテ',1); drawOccupancy(st,'tue',9,45,10,0,own,'Lテ',1); drawOccupancy(st,'sat',9,45,10,0,own,'Lテ',1); drawOccupancy(st,'sun',9,45,10,0,own,'Lテ',1);
-            drawOccupancy(st,'sun',10,1,14,0,occ,'日曜',0); drawOccupancy(st,'sat',11,0,13,0,own,'アッコ',1);
-            drawOccupancy(st,'mon',12,0,12,10,occ,'ラ',0); drawOccupancy(st,'tue',12,0,12,10,occ,'ラ',0);
-            drawOccupancy(st,'sat',13,1,17,0,occ,'ロン',0); drawOccupancy(st,'mon',13,45,14,0,occ,'テ',0); drawOccupancy(st,'tue',13,45,14,0,occ,'テ',0);
-            drawOccupancy(st,'mon',14,0,14,30,own,'テ',1); drawOccupancy(st,'tue',14,0,14,30,own,'テ',1);
-            drawOccupancy(st,'sun',15,0,16,0,own,'馬',1); drawOccupancy(st,'mon',16,0,16,50,occ,'Q',0); drawOccupancy(st,'tue',16,0,16,50,occ,'Q',0); drawOccupancy(st,'sun',16,0,16,50,occ,'Q',0);
-            drawOccupancy(st,'mon',17,0,17,15,occ,'パレ',0); drawOccupancy(st,'tue',17,0,17,15,occ,'パレ',0);
-            drawOccupancy(st,'tue',17,30,23,50,own,'Nナ',1); drawOccupancy(st,'sat',17,30,23,25,occ,'Nナ',0); drawOccupancy(st,'sun',17,30,23,25,occ,'Nナ',0);
-            drawOccupancy(st,'sat',23,30,25,0,own,'土AN',1); drawOccupancy(st,'sun',23,30,24,30,own,'みゅ',1);
-            drawOccupancy(st,'mon',24,0,25,0,occ,'レコ',0); drawOccupancy(st,'tue',24,0,25,0,occ,'レコ',0);
-            ['mon','tue','sat'].forEach(d => drawOccupancy(st,d,25,1,28,59,own,'ANN',1));
-            ['sv3-mon','sv3-tue'].forEach(d => drawOccupancy(st,d,5,0,6,0,own,'あさ',1));
-            ['sv3-mon','sv3-tue','sv3-sat','sv3-sun'].forEach(d => drawOccupancy(st,d,9,40,10,0,own,'テ',1));
-            ['sv3-mon','sv3-tue'].forEach(d => drawOccupancy(st,d,12,30,15,30,own,'ナイ',1));
-            drawOccupancy(st,'sv3-sat',12,30,15,0,own,'サンド',1); drawOccupancy(st,'sv3-sun',14,0,14,30,own,'テ',1); drawOccupancy(st,'sv3-sun',15,0,16,0,own,'馬',1);
-            ['sv3-mon','sv3-tue'].forEach(d => drawOccupancy(st,d,21,30,24,0,own,'M10',1));
-            ['sv3-mon','sv3-tue'].forEach(d => drawOccupancy(st,d,24,1,24,58,own,'ANX',1));
-            drawOccupancy(st,'sv3-sat',23,30,24,0,own,'土AN',1); drawOccupancy(st,'sv3-sat',24,1,24,59,own,'土AN',1);
-            ['sv3-mon','sv3-tue','sv3-sat'].forEach(d => drawOccupancy(st,d,25,1,28,59,own,'ANN',1));
-        }
-        renderBoxes(1); renderBoxes(2); 
-        setTimeout(initCanvas, 500); // 描画後にキャンバスを初期化
+        setTimeout(initCanvas, 500);
     };
 
     function toggleLine(rowId, h, i) { document.getElementById(`${rowId}-row-${h}`).classList.toggle('has-l' + i); }
