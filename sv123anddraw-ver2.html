@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1400, user-scalable=yes">
-    <title>Master Panel v63 - Pen Focus</title>
+    <title>Master Panel v64 - Memory Pen</title>
     <style>
         :root {
             --border-color: #bbb;
@@ -17,7 +17,6 @@
         }
         body { margin: 0; background: #eee; font-family: sans-serif; font-size: 11px; user-select: none; width: 1400px; }
         
-        /* ツールバー固定 */
         #toolbar { 
             position: fixed; top: 0; left: 0; width: 1400px; height: 40px; 
             background: #222; color: white; display: flex; align-items: center; 
@@ -28,15 +27,18 @@
         
         #wrapper { width: 100%; min-height: 100vh; padding-top: 45px; box-sizing: border-box; position: relative; }
         
-        /* 描画キャンバス：手書きONの時だけ pointer-events を制御 */
+        /* 描画キャンバス：pointer-eventsの切り替えをより厳密に */
         #drawing-canvas { 
-            position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1500; 
-            /* デフォルトのタッチ動作を無効化（JSで制御するため） */
+            position: absolute; top: 0; left: 0; 
+            z-index: 1500; 
             touch-action: none; 
+            pointer-events: none; /* デフォルトは下の操作を邪魔しない */
         }
-        #drawing-canvas.active { pointer-events: auto; }
+        #drawing-canvas.active { 
+            pointer-events: auto; /* ONの時だけ入力を受け付ける */
+        }
 
-        /* テーブル等の基本スタイル（v58継承） */
+        /* 以下、テーブル・チェックリスト等のスタイルはv63を完全継承 */
         .stage-section { display: flex; flex-direction: column; padding: 10px; border-bottom: 2px solid #ccc; width: fit-content; }
         .tables-container { display: flex; margin-bottom: 10px; }
         table { border-collapse: collapse; table-layout: fixed; background: white; }
@@ -61,7 +63,6 @@
         .col-timeline { padding: 0 !important; position: relative; }
         canvas.fixed-ui { display: block; }
 
-        /* チェックリスト */
         #final-check-list { background: #fff; padding: 20px; margin: 10px; border: 1px solid #bbb; font-size: 14px; line-height: 1.8; color: #333; position: relative; z-index: 10; width: 1300px; }
         .check-item { display: flex; align-items: flex-start; margin-bottom: 4px; }
         .check-boxes { display: flex; gap: 5px; margin-right: 12px; padding-top: 4px; }
@@ -82,7 +83,7 @@
 <body>
 
 <div id="toolbar">
-    <span style="font-weight:bold;">v63 PRO-PEN</span>
+    <span style="font-weight:bold;">v64 KEEP-MEMO</span>
     <button id="toggle-draw" class="btn" onclick="toggleDrawingMode()">手書き OFF</button>
     <div id="draw-tools" class="draw-controls">
         <div id="btn-red" class="color-btn color-red tool-active" onclick="setTool('red')"></div>
@@ -159,7 +160,9 @@
     const ctx = drawCanvas.getContext('2d');
     let isDrawing = false, currentTool = 'red', lastX = 0, lastY = 0;
 
+    // 【重要】キャンバスの初期化を「一度だけ」にする
     function initCanvas() {
+        if (drawCanvas.width === 1400) return; // すでに設定済みなら何もしない
         drawCanvas.width = 1400; 
         drawCanvas.height = document.documentElement.scrollHeight;
         ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -167,11 +170,20 @@
 
     function toggleDrawingMode() {
         const btn = document.getElementById('toggle-draw'), tools = document.getElementById('draw-tools');
-        drawCanvas.classList.toggle('active');
+        
         if (drawCanvas.classList.contains('active')) {
-            btn.innerText = '手書き ON'; btn.classList.add('active'); tools.style.display = 'flex'; initCanvas();
+            // OFFにする時
+            drawCanvas.classList.remove('active');
+            btn.innerText = '手書き OFF'; 
+            btn.classList.remove('active'); 
+            tools.style.display = 'none';
         } else {
-            btn.innerText = '手書き OFF'; btn.classList.remove('active'); tools.style.display = 'none';
+            // ONにする時
+            drawCanvas.classList.add('active');
+            btn.innerText = '手書き ON'; 
+            btn.classList.add('active'); 
+            tools.style.display = 'flex'; 
+            initCanvas(); // サイズが変わらないようにチェックしながら呼ぶ
         }
     }
 
@@ -187,19 +199,15 @@
         return { x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale };
     }
 
-    // 【重要】描画開始のロジックを強化
     function startDrawing(e) {
         if (!drawCanvas.classList.contains('active')) return;
 
-        // ペン入力、またはスマホ(指1本)の場合だけ描画を許可
-        // iPadの指タッチ(pointerType === 'touch')は、スクロールを優先するため無視
         const isPen = e.pointerType === 'pen';
         const isMouse = e.pointerType === 'mouse';
         const isMobile = window.innerWidth < 1000; 
         const isTouchOnMobile = (e.pointerType === 'touch' && isMobile);
 
         if (isPen || isMouse || isTouchOnMobile) {
-            // ペン入力の時はブラウザのデフォルト挙動（スクロール）を完全に止める
             e.preventDefault(); 
             isDrawing = true;
             const pos = getPointerPos(e);
@@ -210,11 +218,9 @@
 
     function draw(e) {
         if (!isDrawing) return;
-        e.preventDefault(); // 描画中のスクロールを完全にブロック
-
+        e.preventDefault();
         const pos = getPointerPos(e);
         ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y);
-        
         if (currentTool === 'erase') { 
             ctx.globalCompositeOperation = 'destination-out'; ctx.lineWidth = 20; 
         } else { 
@@ -232,7 +238,6 @@
         }
     }
 
-    // イベントリスナーを passive: false で登録（preventDefaultを有効にするため）
     drawCanvas.addEventListener('pointerdown', startDrawing, { passive: false });
     drawCanvas.addEventListener('pointermove', draw, { passive: false });
     drawCanvas.addEventListener('pointerup', stopDrawing);
@@ -240,6 +245,7 @@
 
     window.onload = function() {
         buildTables(1); buildTables(2);
+        // 初回読み込み時にキャンバスを準備（まだ非表示だけど中身は確保）
         setTimeout(initCanvas, 500);
     };
 
@@ -258,6 +264,7 @@
         el.innerText = (el.innerText === "✓") ? "" : "✓";
         el.classList.toggle('bg-selected', !!el.innerText);
     }
+    function clearCanvas() { if (confirm('手書きをすべて消去しますか？')) ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height); }
 </script>
 </body>
 </html>
