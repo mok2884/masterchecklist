@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Time Pro - Legend Pure Mint Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --mint-main: #4DB6AC;
+            --mint-light: #80CBC4;
+            --mint-dark: #00897B;
+            --bg-color: #B2DFDB;
+            --lcd-bg: #c4dbd8;
+            --text-standard: #004D40;
+            --label-tc: #9A8D00;
+        }
+
+        body { 
+            background: linear-gradient(135deg, #B2DFDB 0%, #B2DFDB 30%, #E0F2F1 50%, #B2DFDB 70%, #B2DFDB 100%);
+            color: #333; font-family: 'Inter', sans-serif; 
+            display: flex; align-items: center; justify-content: center; 
+            min-height: 100vh; margin: 0; user-select: none; 
+        }
+
+        .console { width: 95%; max-width: 480px; padding: 25px; display: flex; flex-direction: column; gap: 25px; }
+        .top-row { display: grid; grid-template-columns: 80px 1fr 100px; align-items: flex-end; gap: 18px; }
+        
+        #mode-selector { 
+            width: 70px; height: 70px; 
+            background: linear-gradient(145deg, #80CBC4, #4DB6AC); 
+            border-radius: 50%; border: 3px solid #00796B; 
+            position: relative; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+        }
+
+        #lever-knob { 
+            position: absolute; top: 12px; left: 29px; width: 12px; height: 45px; 
+            background: linear-gradient(to right, #f0f0f0, #bbb, #f0f0f0); 
+            border-radius: 6px; box-shadow: 2px 4px 8px rgba(0,0,0,0.3); 
+            transform: rotate(-20deg); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+        
+        #reset-btn { height: 45px; background: linear-gradient(to bottom, #26A69A, #00897B); border: none; border-radius: 12px; color: white; font-size: 0.9rem; font-weight: bold; box-shadow: 0 4px #004D40; cursor: pointer; }
+        #start-stop-btn { height: 95px; background: linear-gradient(to bottom, #26A69A, #009688); border: none; border-radius: 20px; color: white; font-size: 1rem; font-weight: bold; box-shadow: 0 6px #00796B; cursor: pointer; }
+
+        #display-panel { 
+            background-color: var(--lcd-bg); padding: 20px 25px; border-radius: 25px; 
+            border: 10px solid #75bdb3; 
+            box-shadow: inset 10px 10px 20px rgba(0,0,0,0.3), inset -5px -5px 15px rgba(255,255,255,0.4); 
+            min-height: 200px; display: flex; flex-direction: column; position: relative; overflow: hidden;
+        }
+
+        /* 🌸 上段表示エリアのコンテナ（高さを固定して空白を維持） */
+        #upper-display-area { height: 60px; margin-bottom: 10px; display: flex; flex-direction: column; justify-content: center; }
+
+        .info-row { display: flex; align-items: baseline; gap: 15px; transition: opacity 0.2s ease; }
+        .label { font-size: 1.1rem; font-weight: 800; letter-spacing: 1.5px; width: 105px; }
+        .time-val { color: var(--text-standard); font-size: 2.6rem; font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: 1px; }
+        
+        .label-clock { color: #00796B; opacity: 0.8; }
+        .label-tc { color: var(--label-tc); opacity: 0.9; }
+
+        .divider { border: none; border-top: 1px solid rgba(0, 77, 64, 0.15); margin: 5px 0 10px; width: 100%; }
+
+        #mode-indicator { position: absolute; bottom: 15px; left: 18px; color: #00796B; font-size: 0.8rem; font-weight: bold; opacity: 0.6; }
+        #op-sign { color: #00796B; font-size: 1.8rem; position: absolute; bottom: 12px; right: 20px; font-weight: bold; }
+        #main-time { color: var(--text-standard); font-size: 4.2rem; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: 2px; text-align: right; margin-top: auto; }
+
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; width: 100%; }
+        .calc-btn { 
+            height: 72px; font-size: 1.8rem; font-weight: bold; color: #fff; cursor: pointer; 
+            background: linear-gradient(to bottom, #80CBC4 0%, #4DB6AC 100%); 
+            border: none; box-shadow: 0 8px #00897B, inset 0 2px 4px rgba(255,255,255,0.4); 
+            border-radius: 40px; position: relative; transition: all 0.05s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .calc-btn:active { transform: translateY(6px); box-shadow: 0 2px #00897B; }
+        .rect { border-radius: 20px; font-size: 1.5rem; }
+        .ac-btn { background: linear-gradient(to bottom, #FFAB91 0%, #EF9A9A 100%); box-shadow: 0 8px #E57373, inset 0 2px 4px rgba(255,255,255,0.4); }
+        .eq-btn { background: linear-gradient(to bottom, #26A69A 0%, #00897B 100%); box-shadow: 0 8px #004D40, inset 0 2px 4px rgba(255,255,255,0.3); }
+        
+        .tc-btn-text { font-size: 1.2rem; font-weight: 900; }
+        .clock-icon { width: 28px; height: 28px; border: 2.5px solid white; border-radius: 50%; position: relative; }
+        .clock-icon::before, .clock-icon::after { 
+            content: ''; position: absolute; background: white; border-radius: 2px; left: 50%; bottom: 50%; transform-origin: bottom center; 
+        }
+        .clock-icon::before { width: 2.5px; height: 9px; transform: rotate(-45deg); }
+        .clock-icon::after { width: 2px; height: 11px; transform: rotate(45deg); }
+
+        .hidden { display: none !important; }
+        .sw-active #main-time { color: #D32F2F; }
+        .sw-active #start-stop-btn { background: linear-gradient(to bottom, #FF8A65, #D32F2F); box-shadow: 0 6px #BF360C; }
+    </style>
+</head>
+<body>
+
+    <div class="console">
+        <div class="top-row">
+            <div id="mode-selector" onclick="toggleMode()"><div id="lever-knob"></div></div>
+            <button id="reset-btn" onclick="swReset()">RESET</button>
+            <button id="start-stop-btn" onclick="swStartStop()">START<br>STOP</button>
+        </div>
+
+        <div id="display-panel">
+            <div id="upper-display-area">
+                <div id="section-clock" class="info-row">
+                    <div class="label label-clock">CLOCK</div>
+                    <div id="clock-val" class="time-val">00:00'00"</div>
+                </div>
+                <div id="section-tc" class="info-row hidden">
+                    <div class="label label-tc">TIMECODE</div>
+                    <div id="tc-val" class="time-val">01:00'00"</div>
+                </div>
+            </div>
+
+            <hr id="lcd-divider" class="divider">
+            
+            <div id="mode-indicator">CALC</div>
+            <div id="op-sign"></div>
+            <div id="main-time">0</div>
+        </div>
+
+        <div class="grid">
+            <button class="calc-btn rect" onclick="confirmUnit('h')">時</button>
+            <button class="calc-btn rect" onclick="confirmUnit('m')">分</button>
+            <button class="calc-btn rect" onclick="confirmUnit('s')">秒</button>
+            <button class="calc-btn rect ac-btn" onclick="allClear()">AC</button>
+            
+            <button class="calc-btn" onclick="pressNum(7)">7</button>
+            <button class="calc-btn" onclick="pressNum(8)">8</button>
+            <button class="calc-btn" onclick="pressNum(9)">9</button>
+            <button class="blank" style="visibility:hidden"></button>
+            
+            <button class="calc-btn" onclick="pressNum(4)">4</button>
+            <button class="calc-btn" onclick="pressNum(5)">5</button>
+            <button class="calc-btn" onclick="pressNum(6)">6</button>
+            <button class="calc-btn" onclick="selectDisplay('clock')"><div class="clock-icon"></div></button>
+            
+            <button class="calc-btn" onclick="pressNum(1)">1</button>
+            <button class="calc-btn" onclick="pressNum(2)">2</button>
+            <button class="calc-btn" onclick="pressNum(3)">3</button>
+            <button class="calc-btn" onclick="selectDisplay('tc')"><span class="tc-btn-text">TC</span></button>
+            
+            <button class="calc-btn" onclick="pressNum(0)">0</button>
+            <button class="calc-btn" onclick="setOp('-')">－</button>
+            <button class="calc-btn" onclick="setOp('+')">＋</button>
+            <button class="calc-btn eq-btn" onclick="calculate()">＝</button>
+        </div>
+    </div>
+
+    <script>
+        let mode = 'CALC';
+        let currentUpperMode = 'clock'; // clock, tc, none
+        let memorySeconds = 0, currentOp = null, isDetermined = false, isWaitingNewInput = false;
+        let hBox = "", mBox = "", sBox = "";
+        let isLockedH = false, isLockedM = false;
+
+        const mainDisplay = document.getElementById('main-time');
+        const opSign = document.getElementById('op-sign');
+        const clockValDisplay = document.getElementById('clock-val');
+        const sectionClock = document.getElementById('section-clock');
+        const sectionTc = document.getElementById('section-tc');
+        const lcdDivider = document.getElementById('lcd-divider');
+
+        // 🌸 表示の排他的切り替え
+        function selectDisplay(target) {
+            if (currentUpperMode === target) {
+                // すでに表示されているボタンを押したら消す
+                currentUpperMode = 'none';
+            } else {
+                // それ以外はターゲットを表示
+                currentUpperMode = target;
+            }
+            updateUpperVisibility();
+        }
+
+        function updateUpperVisibility() {
+            sectionClock.classList.add('hidden');
+            sectionTc.classList.add('hidden');
+            lcdDivider.classList.add('hidden');
+
+            if (currentUpperMode === 'clock') {
+                sectionClock.classList.remove('hidden');
+                lcdDivider.classList.remove('hidden');
+            } else if (currentUpperMode === 'tc') {
+                sectionTc.classList.remove('hidden');
+                lcdDivider.classList.remove('hidden');
+            }
+        }
+
+        function updateRealTime() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            clockValDisplay.innerText = `${h}:${m}'${s}"`;
+        }
+        setInterval(updateRealTime, 1000);
+        updateRealTime();
+
+        // 以降の計算ロジックは変更なし
+        function pressNum(n) {
+            if (swRunning) return;
+            if (isDetermined) { memorySeconds = 0; allClearInputs(); isDetermined = false; }
+            if (isWaitingNewInput) { allClearInputs(); isWaitingNewInput = false; }
+            let maxDigits = isLockedM ? 2 : (isLockedH ? 4 : 6);
+            let activeStr = "";
+            if (!isLockedH && !isLockedM) activeStr = (hBox + mBox.padStart(hBox?2:0,'0') + sBox.padStart((mBox||hBox)?2:0,'0'));
+            else if (isLockedH && !isLockedM) activeStr = (mBox + sBox.padStart(mBox?2:0,'0'));
+            else if (isLockedM) activeStr = sBox;
+            if (String(parseInt(activeStr)||'').length >= maxDigits) return;
+            let nextActive = (activeStr === "0" ? "" : activeStr) + n;
+            if (!isLockedH && !isLockedM) {
+                sBox = nextActive.slice(-2); mBox = nextActive.length > 2 ? nextActive.slice(-4, -2) : ""; hBox = nextActive.length > 4 ? nextActive.slice(-6, -4) : "";
+            } else if (isLockedH && !isLockedM) {
+                sBox = nextActive.slice(-2); mBox = nextActive.length > 2 ? nextActive.slice(-4, -2) : "";
+            } else if (isLockedM) {
+                sBox = nextActive.slice(-2);
+            }
+            updateDisplay();
+        }
+
+        function setOp(op) {
+            if (mode !== 'CALC') return;
+            if (isWaitingNewInput) { currentOp = op; opSign.innerText = op; return; }
+            if (hBox || mBox || sBox || isDetermined) {
+                if (!isDetermined) {
+                    let v = getSecondsFromInput();
+                    if (currentOp === '+') memorySeconds += v;
+                    else if (currentOp === '-') memorySeconds -= v;
+                    else memorySeconds = v;
+                }
+                isDetermined = false; isWaitingNewInput = true;
+                currentOp = op; opSign.innerText = op;
+                mainDisplay.innerText = formatTime(memorySeconds);
+            }
+        }
+
+        function calculate() {
+            if (mode !== 'CALC') return;
+            if (!isWaitingNewInput && (hBox || mBox || sBox)) {
+                let v = getSecondsFromInput();
+                if (currentOp === '+') memorySeconds += v;
+                else if (currentOp === '-') memorySeconds -= v;
+                else memorySeconds = v;
+            }
+            mainDisplay.innerText = formatTime(memorySeconds);
+            opSign.innerText = ""; currentOp = null; isDetermined = true; isWaitingNewInput = false;
+            allClearInputs();
+        }
+
+        function getSecondsFromInput() { return (parseInt(hBox || 0) * 3600) + (parseInt(mBox || 0) * 60) + parseInt(sBox || 0); }
+        
+        function confirmUnit(unit) {
+            if (swRunning) return;
+            if (isDetermined) { memorySeconds = 0; allClearInputs(); isDetermined = false; }
+            if (unit === 'h') {
+                let val = (hBox + mBox.padStart(hBox?2:0,'0') + sBox.padStart((mBox||hBox)?2:0,'0'));
+                if (val !== "") { hBox = String(parseInt(val)); mBox = ""; sBox = ""; isLockedH = true; isLockedM = false; }
+            } else if (unit === 'm') {
+                let val = (mBox + sBox.padStart(mBox?2:0,'0'));
+                if (val !== "") { mBox = String(parseInt(val)); sBox = ""; isLockedM = true; }
+            }
+            updateDisplay();
+        }
+
+        function allClearInputs() { hBox = ""; mBox = ""; sBox = ""; isLockedH = false; isLockedM = false; }
+        
+        function updateDisplay() {
+            if (!hBox && !mBox && !sBox) { mainDisplay.innerText = isWaitingNewInput ? formatTime(memorySeconds) : "0"; return; }
+            let res = "";
+            if (hBox) res += hBox + ":";
+            if (mBox || hBox) res += (hBox ? mBox.padStart(2, '0') : (mBox || "0")) + "'";
+            res += (mBox || hBox ? sBox.padStart(2, '0') : (sBox || "0")) + '"';
+            mainDisplay.innerText = res;
+        }
+
+        function formatTime(totalSec) {
+            let absSec = Math.abs(totalSec);
+            let h = Math.floor(absSec / 3600), m = Math.floor((absSec % 3600) / 60), s = absSec % 60;
+            let res = (totalSec < 0 ? "-" : "");
+            if (h > 0) return res + h + ":" + String(m).padStart(2, '0') + "'" + String(s).padStart(2, '0') + '"';
+            if (m > 0) return res + m + "'" + String(s).padStart(2, '0') + '"';
+            return res + s + '"';
+        }
+
+        function toggleMode() {
+            if (swRunning) return;
+            const lever = document.getElementById('lever-knob');
+            const modeIndicator = document.getElementById('mode-indicator');
+            if (mode === 'CALC') {
+                mode = 'SW'; lever.style.transform = 'rotate(20deg)'; modeIndicator.innerText = 'STOPWATCH';
+                allClearInputs(); mainDisplay.innerText = "0\"00";
+            } else {
+                mode = 'CALC'; lever.style.transform = 'rotate(-20deg)'; modeIndicator.innerText = 'CALC';
+                opSign.innerText = currentOp || ""; allClearInputs();
+                memorySeconds = Math.floor(swElapsed / 1000); mainDisplay.innerText = formatTime(memorySeconds);
+                isDetermined = true;
+            }
+        }
+
+        let swElapsed = 0, swTimer = null, swRunning = false, swStartTime = 0;
+        function swStartStop() {
+            if (mode !== 'SW') toggleMode();
+            if (!swRunning) {
+                if (hBox || mBox || sBox) { swElapsed = getSecondsFromInput() * 1000; allClearInputs(); }
+                swRunning = true; swStartTime = Date.now() - swElapsed;
+                swTimer = setInterval(() => { swElapsed = Date.now() - swStartTime; updateSwDisplay(); }, 10);
+                document.body.classList.add('sw-active');
+            } else { swRunning = false; clearInterval(swTimer); document.body.classList.remove('sw-active'); }
+        }
+
+        function updateSwDisplay() {
+            let s = Math.floor(swElapsed / 1000), ms = Math.floor((swElapsed % 1000) / 10);
+            let h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+            mainDisplay.innerText = (h > 0 ? h + ":" : "") + (h > 0 || m > 0 ? (h > 0 ? String(m).padStart(2, '0') : m) + "'" : "") + String(sec).padStart(2, '0') + '"' + String(ms).padStart(2, '0');
+        }
+
+        function swReset() { if (!swRunning) { swElapsed = 0; allClearInputs(); mainDisplay.innerText = "0\"00"; } }
+        function allClear() { memorySeconds = 0; currentOp = null; allClearInputs(); isDetermined = false; isWaitingNewInput = false; opSign.innerText = ""; mainDisplay.innerText = "0"; }
+    </script>
+</body>
+</html>
