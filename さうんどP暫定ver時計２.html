@@ -17,14 +17,9 @@
             --accent-red: #D32F2F;
         }
 
-        /* 🌸 背景色を死守しつつ、スクロールを殺す設定 */
         html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* スクロールバーを出さない */
-            position: fixed; /* 画面を固定 */
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; position: fixed;
         }
 
         body { 
@@ -97,7 +92,7 @@
             border: none; box-shadow: 0 8px #00897B, inset 0 2px 4px rgba(255,255,255,0.4); 
             border-radius: 40px; position: relative; transition: all 0.05s;
             display: flex; align-items: center; justify-content: center;
-            touch-action: manipulation; /* ボタンの反応を良くする */
+            touch-action: manipulation;
         }
         .calc-btn:active { transform: translateY(6px); box-shadow: 0 2px #00897B; }
         .rect { border-radius: 20px; font-size: 1.5rem; }
@@ -194,8 +189,10 @@
             if (m === 'CALC') { lever.style.transform = 'rotate(-40deg)'; modeIndicator.innerText = 'CALC'; }
             else if (m === 'TC') { lever.style.transform = 'rotate(0deg)'; modeIndicator.innerText = 'TC SET / RUN'; }
             else if (m === 'SW') { lever.style.transform = 'rotate(40deg)'; modeIndicator.innerText = 'STOPWATCH'; }
+            
             if (currentMode === 'CALC') lcdPanel.classList.remove('active-lcd');
             else lcdPanel.classList.add('active-lcd');
+            
             updateDisplay();
         }
 
@@ -226,7 +223,7 @@
                 let swIn = inputs['SW'];
                 if (swIn.h || swIn.m || swIn.s) { swElapsedMs = getSecondsFromInput('SW') * 1000; clearModeInput('SW'); }
                 swRunning = true; swStartTime = Date.now() - swElapsedMs;
-                swInterval = setInterval(() => { swElapsedMs = Date.now() - swStartTime; if (currentMode === 'SW') updateSwDisplay(); }, 10);
+                swInterval = setInterval(() => { swElapsedMs = Date.now() - swStartTime; updateDisplay(); }, 10);
             } else { swRunning = false; clearInterval(swInterval); }
             updateDisplay();
         }
@@ -234,13 +231,23 @@
         function updateDisplay() {
             let totalTcSec = tcBaseSeconds + Math.floor(tcElapsedMs / 1000);
             tcDisplay.innerText = formatFullTime(totalTcSec);
+            
+            // 🌸 文字色リセット（基本はグリーン）
+            mainDisplay.classList.remove('running-text');
+
             if (currentMode === 'TC' && !tcRunning && (inputs['TC'].h || inputs['TC'].m || inputs['TC'].s)) {
                 tcDisplay.innerText = formatFullTime(getSecondsFromInput('TC'));
             }
+
             if (currentMode === 'SW') {
+                // 🌸 SWモードの時だけ、動いていたら赤くする
+                if (swRunning) mainDisplay.classList.add('running-text');
+                
                 if (!swRunning && (inputs['SW'].h || inputs['SW'].m || inputs['SW'].s)) {
                     mainDisplay.innerText = formatInputToDisplay('SW') + '00';
-                } else { updateSwDisplay(); }
+                } else {
+                    mainDisplay.innerText = formatSW(swElapsedMs);
+                }
             } else if (currentMode === 'TC') {
                 mainDisplay.innerText = formatInputToDisplay('TC') || "0";
             } else {
@@ -248,12 +255,6 @@
                     mainDisplay.innerText = isWaitingNewInput ? formatTime(memorySeconds) : (isDetermined ? formatTime(memorySeconds) : "0");
                 } else { mainDisplay.innerText = formatInputToDisplay('CALC'); }
             }
-        }
-
-        function updateSwDisplay() {
-            mainDisplay.innerText = formatSW(swElapsedMs);
-            if (swRunning) mainDisplay.classList.add('running-text');
-            else mainDisplay.classList.remove('running-text');
         }
 
         function pressNum(n) {
@@ -352,15 +353,12 @@
         updateRealTime();
         setMode('CALC');
 
-        // 🌸 画面全体のスクロール（引っ張って更新）をキャンセル！
-        // ボタン操作などは通るようにイベントを制限しています
         document.body.addEventListener('touchmove', function(e) {
             if (e.target === document.body || e.target.closest('.console') === null) {
                 e.preventDefault();
             }
         }, { passive: false });
 
-        // もしこれでも更新される場合は、以下のようにさらに強く制限をかけます
         window.addEventListener('scroll', function(e) {
             window.scrollTo(0, 0);
         });
