@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Time Pro - Legend Pure Mint Edition</title>
+    <title>Time Pro - Professional Independent Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -14,6 +14,7 @@
             --lcd-bg: #c4dbd8;
             --text-standard: #004D40;
             --label-tc: #9A8D00;
+            --accent-red: #D32F2F;
         }
 
         body { 
@@ -27,19 +28,31 @@
         .top-row { display: grid; grid-template-columns: 80px 1fr 100px; align-items: flex-end; gap: 18px; }
         
         #mode-selector { 
-            width: 70px; height: 70px; 
+            width: 80px; height: 80px; 
             background: linear-gradient(145deg, #80CBC4, #4DB6AC); 
             border-radius: 50%; border: 3px solid #00796B; 
             position: relative; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            display: flex; align-items: center; justify-content: center;
         }
 
         #lever-knob { 
-            position: absolute; top: 12px; left: 29px; width: 12px; height: 45px; 
+            width: 10px; height: 60px; 
             background: linear-gradient(to right, #f0f0f0, #bbb, #f0f0f0); 
-            border-radius: 6px; box-shadow: 2px 4px 8px rgba(0,0,0,0.3); 
-            transform: rotate(-20deg); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            border-radius: 5px; box-shadow: 2px 0 5px rgba(0,0,0,0.2); 
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            transform-origin: center center;
+            position: relative;
         }
-        
+
+        #lever-knob::after {
+            content: ''; position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 20px; height: 20px;
+            background: radial-gradient(circle, #f0f0f0 0%, #bbb 100%);
+            border-radius: 50%; border: 2px solid #999;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
         #reset-btn { height: 45px; background: linear-gradient(to bottom, #26A69A, #00897B); border: none; border-radius: 12px; color: white; font-size: 0.9rem; font-weight: bold; box-shadow: 0 4px #004D40; cursor: pointer; }
         #start-stop-btn { height: 95px; background: linear-gradient(to bottom, #26A69A, #009688); border: none; border-radius: 20px; color: white; font-size: 1rem; font-weight: bold; box-shadow: 0 6px #00796B; cursor: pointer; }
 
@@ -49,10 +62,9 @@
             box-shadow: inset 10px 10px 20px rgba(0,0,0,0.3), inset -5px -5px 15px rgba(255,255,255,0.4); 
             min-height: 200px; display: flex; flex-direction: column; position: relative; overflow: hidden;
         }
+        .active-lcd { cursor: pointer !important; border-color: #4DB6AC !important; }
 
-        /* 🌸 上段表示エリアのコンテナ（高さを固定して空白を維持） */
-        #upper-display-area { height: 60px; margin-bottom: 10px; display: flex; flex-direction: column; justify-content: center; }
-
+        #upper-display-area { height: 60px; margin-bottom: 10px; display: flex; flex-direction: column; justify-content: center; pointer-events: none; }
         .info-row { display: flex; align-items: baseline; gap: 15px; transition: opacity 0.2s ease; }
         .label { font-size: 1.1rem; font-weight: 800; letter-spacing: 1.5px; width: 105px; }
         .time-val { color: var(--text-standard); font-size: 2.6rem; font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: 1px; }
@@ -60,7 +72,7 @@
         .label-clock { color: #00796B; opacity: 0.8; }
         .label-tc { color: var(--label-tc); opacity: 0.9; }
 
-        .divider { border: none; border-top: 1px solid rgba(0, 77, 64, 0.15); margin: 5px 0 10px; width: 100%; }
+        .divider { border: none; border-top: 1px solid rgba(0, 77, 64, 0.15); margin: 5px 0 10px; width: 100%; pointer-events: none; }
 
         #mode-indicator { position: absolute; bottom: 15px; left: 18px; color: #00796B; font-size: 0.8rem; font-weight: bold; opacity: 0.6; }
         #op-sign { color: #00796B; font-size: 1.8rem; position: absolute; bottom: 12px; right: 20px; font-weight: bold; }
@@ -79,29 +91,27 @@
         .ac-btn { background: linear-gradient(to bottom, #FFAB91 0%, #EF9A9A 100%); box-shadow: 0 8px #E57373, inset 0 2px 4px rgba(255,255,255,0.4); }
         .eq-btn { background: linear-gradient(to bottom, #26A69A 0%, #00897B 100%); box-shadow: 0 8px #004D40, inset 0 2px 4px rgba(255,255,255,0.3); }
         
-        .tc-btn-text { font-size: 1.2rem; font-weight: 900; }
         .clock-icon { width: 28px; height: 28px; border: 2.5px solid white; border-radius: 50%; position: relative; }
-        .clock-icon::before, .clock-icon::after { 
-            content: ''; position: absolute; background: white; border-radius: 2px; left: 50%; bottom: 50%; transform-origin: bottom center; 
-        }
+        .clock-icon::before, .clock-icon::after { content: ''; position: absolute; background: white; border-radius: 2px; left: 50%; bottom: 50%; transform-origin: bottom center; }
         .clock-icon::before { width: 2.5px; height: 9px; transform: rotate(-45deg); }
         .clock-icon::after { width: 2px; height: 11px; transform: rotate(45deg); }
 
         .hidden { display: none !important; }
-        .sw-active #main-time { color: #D32F2F; }
-        .sw-active #start-stop-btn { background: linear-gradient(to bottom, #FF8A65, #D32F2F); box-shadow: 0 6px #BF360C; }
+        .running-text { color: var(--accent-red) !important; }
     </style>
 </head>
 <body>
 
     <div class="console">
         <div class="top-row">
-            <div id="mode-selector" onclick="toggleMode()"><div id="lever-knob"></div></div>
-            <button id="reset-btn" onclick="swReset()">RESET</button>
-            <button id="start-stop-btn" onclick="swStartStop()">START<br>STOP</button>
+            <div id="mode-selector" onclick="cycleMode()">
+                <div id="lever-knob"></div>
+            </div>
+            <button id="reset-btn" onclick="handleReset()">RESET</button>
+            <button id="start-stop-btn" onclick="handleStartStop()">START<br>STOP</button>
         </div>
 
-        <div id="display-panel">
+        <div id="display-panel" onclick="lcdTapped()">
             <div id="upper-display-area">
                 <div id="section-clock" class="info-row">
                     <div class="label label-clock">CLOCK</div>
@@ -109,12 +119,10 @@
                 </div>
                 <div id="section-tc" class="info-row hidden">
                     <div class="label label-tc">TIMECODE</div>
-                    <div id="tc-val" class="time-val">01:00'00"</div>
+                    <div id="tc-val" class="time-val">00:00'00"</div>
                 </div>
             </div>
-
             <hr id="lcd-divider" class="divider">
-            
             <div id="mode-indicator">CALC</div>
             <div id="op-sign"></div>
             <div id="main-time">0</div>
@@ -134,12 +142,12 @@
             <button class="calc-btn" onclick="pressNum(4)">4</button>
             <button class="calc-btn" onclick="pressNum(5)">5</button>
             <button class="calc-btn" onclick="pressNum(6)">6</button>
-            <button class="calc-btn" onclick="selectDisplay('clock')"><div class="clock-icon"></div></button>
+            <button class="calc-btn" onclick="selectUpperDisplay('clock')"><div class="clock-icon"></div></button>
             
             <button class="calc-btn" onclick="pressNum(1)">1</button>
             <button class="calc-btn" onclick="pressNum(2)">2</button>
             <button class="calc-btn" onclick="pressNum(3)">3</button>
-            <button class="calc-btn" onclick="selectDisplay('tc')"><span class="tc-btn-text">TC</span></button>
+            <button class="calc-btn" onclick="selectUpperDisplay('tc')"><span style="font-size:1.2rem;font-weight:900;">TC</span></button>
             
             <button class="calc-btn" onclick="pressNum(0)">0</button>
             <button class="calc-btn" onclick="setOp('-')">－</button>
@@ -149,175 +157,246 @@
     </div>
 
     <script>
-        let mode = 'CALC';
-        let currentUpperMode = 'clock'; // clock, tc, none
+        let currentMode = 'CALC';
+        let upperView = 'clock'; 
+        
+        // システム状態
+        let tcBaseSeconds = 0, tcElapsedMs = 0, tcRunning = false, tcStartTime = 0, tcInterval = null;
+        let swElapsedMs = 0, swRunning = false, swStartTime = 0, swInterval = null;
+
+        // 計算機用
         let memorySeconds = 0, currentOp = null, isDetermined = false, isWaitingNewInput = false;
-        let hBox = "", mBox = "", sBox = "";
-        let isLockedH = false, isLockedM = false;
-
+        
+        // 🌸 モード別入力バッファ（各モードで独立）
+        let inputs = {
+            'CALC': { h: "", m: "", s: "" },
+            'TC':   { h: "", m: "", s: "" },
+            'SW':   { h: "", m: "", s: "" }
+        };
+        
+        const lever = document.getElementById('lever-knob');
+        const modeIndicator = document.getElementById('mode-indicator');
         const mainDisplay = document.getElementById('main-time');
-        const opSign = document.getElementById('op-sign');
-        const clockValDisplay = document.getElementById('clock-val');
-        const sectionClock = document.getElementById('section-clock');
-        const sectionTc = document.getElementById('section-tc');
-        const lcdDivider = document.getElementById('lcd-divider');
+        const tcDisplay = document.getElementById('tc-val');
+        const lcdPanel = document.getElementById('display-panel');
 
-        // 🌸 表示の排他的切り替え
-        function selectDisplay(target) {
-            if (currentUpperMode === target) {
-                // すでに表示されているボタンを押したら消す
-                currentUpperMode = 'none';
-            } else {
-                // それ以外はターゲットを表示
-                currentUpperMode = target;
-            }
-            updateUpperVisibility();
+        function cycleMode() {
+            if (currentMode === 'CALC') setMode('TC');
+            else if (currentMode === 'TC') setMode('SW');
+            else setMode('CALC');
         }
 
-        function updateUpperVisibility() {
-            sectionClock.classList.add('hidden');
-            sectionTc.classList.add('hidden');
-            lcdDivider.classList.add('hidden');
+        function setMode(m) {
+            currentMode = m;
+            if (m === 'CALC') { lever.style.transform = 'rotate(-40deg)'; modeIndicator.innerText = 'CALC'; }
+            else if (m === 'TC') { lever.style.transform = 'rotate(0deg)'; modeIndicator.innerText = 'TC SET / RUN'; }
+            else if (m === 'SW') { lever.style.transform = 'rotate(40deg)'; modeIndicator.innerText = 'STOPWATCH'; }
+            
+            if (currentMode === 'CALC') lcdPanel.classList.remove('active-lcd');
+            else lcdPanel.classList.add('active-lcd');
+            updateDisplay();
+        }
 
-            if (currentUpperMode === 'clock') {
-                sectionClock.classList.remove('hidden');
-                lcdDivider.classList.remove('hidden');
-            } else if (currentUpperMode === 'tc') {
-                sectionTc.classList.remove('hidden');
-                lcdDivider.classList.remove('hidden');
+        function handleStartStop() {
+            if (currentMode === 'TC' && !tcRunning) startTC();
+            if (currentMode === 'SW') toggleSW();
+        }
+
+        function handleReset() {
+            if (currentMode === 'TC') {
+                stopTC();
+                tcBaseSeconds = 0; tcElapsedMs = 0;
+                clearModeInput('TC');
+                updateDisplay();
             }
+            if (currentMode === 'SW' && !swRunning) {
+                swElapsedMs = 0;
+                clearModeInput('SW');
+                updateDisplay();
+            }
+        }
+
+        function lcdTapped() { handleStartStop(); }
+
+        function startTC() {
+            let tcIn = inputs['TC'];
+            if (tcIn.h || tcIn.m || tcIn.s) {
+                tcBaseSeconds = getSecondsFromInput('TC');
+                tcElapsedMs = 0;
+                clearModeInput('TC');
+            }
+            tcRunning = true;
+            tcStartTime = Date.now() - tcElapsedMs;
+            tcInterval = setInterval(() => {
+                tcElapsedMs = Date.now() - tcStartTime;
+                updateDisplay();
+            }, 100);
+            updateDisplay();
+        }
+
+        function stopTC() {
+            tcRunning = false;
+            if (tcInterval) clearInterval(tcInterval);
+        }
+
+        function toggleSW() {
+            if (!swRunning) {
+                // 🌸 SW開始時、入力があればその秒数からスタート
+                let swIn = inputs['SW'];
+                if (swIn.h || swIn.m || swIn.s) {
+                    swElapsedMs = getSecondsFromInput('SW') * 1000;
+                    clearModeInput('SW');
+                }
+                swRunning = true; swStartTime = Date.now() - swElapsedMs;
+                swInterval = setInterval(() => { 
+                    swElapsedMs = Date.now() - swStartTime; 
+                    if (currentMode === 'SW') updateSwDisplay(); // SWモードの時だけ表示更新
+                }, 10);
+            } else { 
+                swRunning = false; clearInterval(swInterval); 
+            }
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // --- 上部TCエリア ---
+            let totalTcSec = tcBaseSeconds + Math.floor(tcElapsedMs / 1000);
+            tcDisplay.innerText = formatFullTime(totalTcSec);
+            // TC入力中のプレビュー（TCモードかつ停止中）
+            if (currentMode === 'TC' && !tcRunning && (inputs['TC'].h || inputs['TC'].m || inputs['TC'].s)) {
+                tcDisplay.innerText = formatFullTime(getSecondsFromInput('TC'));
+            }
+
+            // --- メイン表示エリア（モードによって完全に分ける） ---
+            if (currentMode === 'SW') {
+                // 🌸 SWモード：入力中または計測値を表示
+                if (!swRunning && (inputs['SW'].h || inputs['SW'].m || inputs['SW'].s)) {
+                    mainDisplay.innerText = formatInputToDisplay('SW') + '00';
+                    mainDisplay.classList.remove('running-text');
+                } else {
+                    updateSwDisplay();
+                }
+            } else if (currentMode === 'TC') {
+                // 🌸 TCモード：TCの設定入力値を表示
+                mainDisplay.classList.remove('running-text');
+                mainDisplay.innerText = formatInputToDisplay('TC') || "0";
+            } else {
+                // 🌸 CALCモード：計算結果のみを表示
+                mainDisplay.classList.remove('running-text');
+                if (!inputs['CALC'].h && !inputs['CALC'].m && !inputs['CALC'].s) {
+                    mainDisplay.innerText = isWaitingNewInput ? formatTime(memorySeconds) : (isDetermined ? formatTime(memorySeconds) : "0");
+                } else {
+                    mainDisplay.innerText = formatInputToDisplay('CALC');
+                }
+            }
+        }
+
+        function updateSwDisplay() {
+            mainDisplay.innerText = formatSW(swElapsedMs);
+            if (swRunning) mainDisplay.classList.add('running-text');
+            else mainDisplay.classList.remove('running-text');
+        }
+
+        function pressNum(n) {
+            // 走行中のモード入力をブロック
+            if ((currentMode === 'TC' && tcRunning) || (currentMode === 'SW' && swRunning)) return;
+            
+            if (currentMode === 'CALC') {
+                if (isDetermined) { memorySeconds = 0; clearModeInput('CALC'); isDetermined = false; }
+                if (isWaitingNewInput) { clearModeInput('CALC'); isWaitingNewInput = false; }
+            }
+
+            let target = inputs[currentMode];
+            let activeStr = (target.h + target.m.padStart(target.h?2:0,'0') + target.s.padStart((target.m||target.h)?2:0,'0'));
+            if (activeStr.length >= 6) return;
+            
+            let nextActive = (activeStr === "0" ? "" : activeStr) + n;
+            target.s = nextActive.slice(-2);
+            target.m = nextActive.length > 2 ? nextActive.slice(-4, -2) : "";
+            target.h = nextActive.length > 4 ? nextActive.slice(-6, -4) : "";
+            updateDisplay();
+        }
+
+        function formatInputToDisplay(mode) {
+            let target = inputs[mode];
+            if (!target.h && !target.m && !target.s) return "";
+            let res = "";
+            if (target.h) res += target.h + ":";
+            if (target.m || target.h) res += (target.h ? target.m.padStart(2, '0') : (target.m || "0")) + "'";
+            res += (target.m || target.h ? target.s.padStart(2, '0') : (target.s || "0")) + '"';
+            return res;
+        }
+
+        function formatFullTime(totalSec) {
+            let h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
+            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}"`;
+        }
+
+        function formatSW(ms) {
+            let s = Math.floor(ms / 1000), dec = Math.floor((ms % 1000) / 10);
+            let h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+            return (h > 0 ? h + ":" : "") + (h > 0 || m > 0 ? String(m).padStart(2,'0') + "'" : "") + String(sec).padStart(2,'0') + '"' + String(dec).padStart(2,'0');
+        }
+
+        function getSecondsFromInput(mode) {
+            let target = inputs[mode];
+            return (parseInt(target.h || 0) * 3600) + (parseInt(target.m || 0) * 60) + parseInt(target.s || 0);
+        }
+
+        function clearModeInput(mode) { inputs[mode] = { h: "", m: "", s: "" }; }
+
+        function setOp(op) {
+            if (currentMode !== 'CALC') return;
+            if (isWaitingNewInput) { currentOp = op; document.getElementById('op-sign').innerText = op; return; }
+            let v = getSecondsFromInput('CALC');
+            if (currentOp === '+') memorySeconds += v; else if (currentOp === '-') memorySeconds -= v; else memorySeconds = v;
+            isDetermined = false; isWaitingNewInput = true; currentOp = op;
+            document.getElementById('op-sign').innerText = op; clearModeInput('CALC'); updateDisplay();
+        }
+
+        function calculate() {
+            if (currentMode !== 'CALC') return;
+            let v = getSecondsFromInput('CALC');
+            if (currentOp === '+') memorySeconds += v; else if (currentOp === '-') memorySeconds -= v; else memorySeconds = v;
+            clearModeInput('CALC'); isDetermined = true; isWaitingNewInput = false; currentOp = null;
+            document.getElementById('op-sign').innerText = ""; updateDisplay();
+        }
+
+        function confirmUnit(unit) {
+            if ((currentMode === 'TC' && tcRunning) || (currentMode === 'SW' && swRunning)) return;
+            if (unit === 'h') { 
+                let v = getSecondsFromInput(currentMode); 
+                inputs[currentMode].h = String(v); 
+                inputs[currentMode].m = inputs[currentMode].s = ""; 
+            }
+            updateDisplay();
+        }
+
+        function allClear() {
+            if (currentMode === 'CALC') { memorySeconds = 0; currentOp = null; isDetermined = false; isWaitingNewInput = false; document.getElementById('op-sign').innerText = ""; }
+            clearModeInput(currentMode);
+            updateDisplay();
+        }
+
+        function selectUpperDisplay(target) {
+            upperView = (upperView === target) ? 'none' : target;
+            document.getElementById('section-clock').classList.toggle('hidden', upperView !== 'clock');
+            document.getElementById('section-tc').classList.toggle('hidden', upperView !== 'tc');
+            document.getElementById('lcd-divider').classList.toggle('hidden', upperView === 'none');
+        }
+
+        function formatTime(ts) { 
+            let h = Math.floor(Math.abs(ts)/3600), m = Math.floor((Math.abs(ts)%3600)/60), s = Math.abs(ts)%60; 
+            return (ts<0?"-":"")+(h>0?h+":"+String(m).padStart(2,'0')+"'"+String(s).padStart(2,'0')+'"':(m>0?m+"'"+String(s).padStart(2,'0')+'"':s+'"')); 
         }
 
         function updateRealTime() {
             const now = new Date();
-            const h = String(now.getHours()).padStart(2, '0');
-            const m = String(now.getMinutes()).padStart(2, '0');
-            const s = String(now.getSeconds()).padStart(2, '0');
-            clockValDisplay.innerText = `${h}:${m}'${s}"`;
+            document.getElementById('clock-val').innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}'${String(now.getSeconds()).padStart(2,'0')}"`;
         }
         setInterval(updateRealTime, 1000);
         updateRealTime();
-
-        // 以降の計算ロジックは変更なし
-        function pressNum(n) {
-            if (swRunning) return;
-            if (isDetermined) { memorySeconds = 0; allClearInputs(); isDetermined = false; }
-            if (isWaitingNewInput) { allClearInputs(); isWaitingNewInput = false; }
-            let maxDigits = isLockedM ? 2 : (isLockedH ? 4 : 6);
-            let activeStr = "";
-            if (!isLockedH && !isLockedM) activeStr = (hBox + mBox.padStart(hBox?2:0,'0') + sBox.padStart((mBox||hBox)?2:0,'0'));
-            else if (isLockedH && !isLockedM) activeStr = (mBox + sBox.padStart(mBox?2:0,'0'));
-            else if (isLockedM) activeStr = sBox;
-            if (String(parseInt(activeStr)||'').length >= maxDigits) return;
-            let nextActive = (activeStr === "0" ? "" : activeStr) + n;
-            if (!isLockedH && !isLockedM) {
-                sBox = nextActive.slice(-2); mBox = nextActive.length > 2 ? nextActive.slice(-4, -2) : ""; hBox = nextActive.length > 4 ? nextActive.slice(-6, -4) : "";
-            } else if (isLockedH && !isLockedM) {
-                sBox = nextActive.slice(-2); mBox = nextActive.length > 2 ? nextActive.slice(-4, -2) : "";
-            } else if (isLockedM) {
-                sBox = nextActive.slice(-2);
-            }
-            updateDisplay();
-        }
-
-        function setOp(op) {
-            if (mode !== 'CALC') return;
-            if (isWaitingNewInput) { currentOp = op; opSign.innerText = op; return; }
-            if (hBox || mBox || sBox || isDetermined) {
-                if (!isDetermined) {
-                    let v = getSecondsFromInput();
-                    if (currentOp === '+') memorySeconds += v;
-                    else if (currentOp === '-') memorySeconds -= v;
-                    else memorySeconds = v;
-                }
-                isDetermined = false; isWaitingNewInput = true;
-                currentOp = op; opSign.innerText = op;
-                mainDisplay.innerText = formatTime(memorySeconds);
-            }
-        }
-
-        function calculate() {
-            if (mode !== 'CALC') return;
-            if (!isWaitingNewInput && (hBox || mBox || sBox)) {
-                let v = getSecondsFromInput();
-                if (currentOp === '+') memorySeconds += v;
-                else if (currentOp === '-') memorySeconds -= v;
-                else memorySeconds = v;
-            }
-            mainDisplay.innerText = formatTime(memorySeconds);
-            opSign.innerText = ""; currentOp = null; isDetermined = true; isWaitingNewInput = false;
-            allClearInputs();
-        }
-
-        function getSecondsFromInput() { return (parseInt(hBox || 0) * 3600) + (parseInt(mBox || 0) * 60) + parseInt(sBox || 0); }
-        
-        function confirmUnit(unit) {
-            if (swRunning) return;
-            if (isDetermined) { memorySeconds = 0; allClearInputs(); isDetermined = false; }
-            if (unit === 'h') {
-                let val = (hBox + mBox.padStart(hBox?2:0,'0') + sBox.padStart((mBox||hBox)?2:0,'0'));
-                if (val !== "") { hBox = String(parseInt(val)); mBox = ""; sBox = ""; isLockedH = true; isLockedM = false; }
-            } else if (unit === 'm') {
-                let val = (mBox + sBox.padStart(mBox?2:0,'0'));
-                if (val !== "") { mBox = String(parseInt(val)); sBox = ""; isLockedM = true; }
-            }
-            updateDisplay();
-        }
-
-        function allClearInputs() { hBox = ""; mBox = ""; sBox = ""; isLockedH = false; isLockedM = false; }
-        
-        function updateDisplay() {
-            if (!hBox && !mBox && !sBox) { mainDisplay.innerText = isWaitingNewInput ? formatTime(memorySeconds) : "0"; return; }
-            let res = "";
-            if (hBox) res += hBox + ":";
-            if (mBox || hBox) res += (hBox ? mBox.padStart(2, '0') : (mBox || "0")) + "'";
-            res += (mBox || hBox ? sBox.padStart(2, '0') : (sBox || "0")) + '"';
-            mainDisplay.innerText = res;
-        }
-
-        function formatTime(totalSec) {
-            let absSec = Math.abs(totalSec);
-            let h = Math.floor(absSec / 3600), m = Math.floor((absSec % 3600) / 60), s = absSec % 60;
-            let res = (totalSec < 0 ? "-" : "");
-            if (h > 0) return res + h + ":" + String(m).padStart(2, '0') + "'" + String(s).padStart(2, '0') + '"';
-            if (m > 0) return res + m + "'" + String(s).padStart(2, '0') + '"';
-            return res + s + '"';
-        }
-
-        function toggleMode() {
-            if (swRunning) return;
-            const lever = document.getElementById('lever-knob');
-            const modeIndicator = document.getElementById('mode-indicator');
-            if (mode === 'CALC') {
-                mode = 'SW'; lever.style.transform = 'rotate(20deg)'; modeIndicator.innerText = 'STOPWATCH';
-                allClearInputs(); mainDisplay.innerText = "0\"00";
-            } else {
-                mode = 'CALC'; lever.style.transform = 'rotate(-20deg)'; modeIndicator.innerText = 'CALC';
-                opSign.innerText = currentOp || ""; allClearInputs();
-                memorySeconds = Math.floor(swElapsed / 1000); mainDisplay.innerText = formatTime(memorySeconds);
-                isDetermined = true;
-            }
-        }
-
-        let swElapsed = 0, swTimer = null, swRunning = false, swStartTime = 0;
-        function swStartStop() {
-            if (mode !== 'SW') toggleMode();
-            if (!swRunning) {
-                if (hBox || mBox || sBox) { swElapsed = getSecondsFromInput() * 1000; allClearInputs(); }
-                swRunning = true; swStartTime = Date.now() - swElapsed;
-                swTimer = setInterval(() => { swElapsed = Date.now() - swStartTime; updateSwDisplay(); }, 10);
-                document.body.classList.add('sw-active');
-            } else { swRunning = false; clearInterval(swTimer); document.body.classList.remove('sw-active'); }
-        }
-
-        function updateSwDisplay() {
-            let s = Math.floor(swElapsed / 1000), ms = Math.floor((swElapsed % 1000) / 10);
-            let h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-            mainDisplay.innerText = (h > 0 ? h + ":" : "") + (h > 0 || m > 0 ? (h > 0 ? String(m).padStart(2, '0') : m) + "'" : "") + String(sec).padStart(2, '0') + '"' + String(ms).padStart(2, '0');
-        }
-
-        function swReset() { if (!swRunning) { swElapsed = 0; allClearInputs(); mainDisplay.innerText = "0\"00"; } }
-        function allClear() { memorySeconds = 0; currentOp = null; allClearInputs(); isDetermined = false; isWaitingNewInput = false; opSign.innerText = ""; mainDisplay.innerText = "0"; }
+        setMode('CALC');
     </script>
 </body>
 </html>
