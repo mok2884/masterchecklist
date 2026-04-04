@@ -22,6 +22,8 @@
             color: #333; font-family: 'Inter', sans-serif; 
             display: flex; align-items: center; justify-content: center; 
             min-height: 100vh; margin: 0; user-select: none; 
+            /* 🌸 スマホの「引っ張って更新」を防止する魔法の1行！ */
+            overscroll-behavior-y: contain; 
         }
 
         .console { width: 95%; max-width: 480px; padding: 25px; display: flex; flex-direction: column; gap: 25px; }
@@ -167,7 +169,7 @@
         // 計算機用
         let memorySeconds = 0, currentOp = null, isDetermined = false, isWaitingNewInput = false;
         
-        // 🌸 モード別入力バッファ（各モードで独立）
+        // モード別入力バッファ
         let inputs = {
             'CALC': { h: "", m: "", s: "" },
             'TC':   { h: "", m: "", s: "" },
@@ -241,7 +243,6 @@
 
         function toggleSW() {
             if (!swRunning) {
-                // 🌸 SW開始時、入力があればその秒数からスタート
                 let swIn = inputs['SW'];
                 if (swIn.h || swIn.m || swIn.s) {
                     swElapsedMs = getSecondsFromInput('SW') * 1000;
@@ -250,7 +251,7 @@
                 swRunning = true; swStartTime = Date.now() - swElapsedMs;
                 swInterval = setInterval(() => { 
                     swElapsedMs = Date.now() - swStartTime; 
-                    if (currentMode === 'SW') updateSwDisplay(); // SWモードの時だけ表示更新
+                    if (currentMode === 'SW') updateSwDisplay();
                 }, 10);
             } else { 
                 swRunning = false; clearInterval(swInterval); 
@@ -259,17 +260,13 @@
         }
 
         function updateDisplay() {
-            // --- 上部TCエリア ---
             let totalTcSec = tcBaseSeconds + Math.floor(tcElapsedMs / 1000);
             tcDisplay.innerText = formatFullTime(totalTcSec);
-            // TC入力中のプレビュー（TCモードかつ停止中）
             if (currentMode === 'TC' && !tcRunning && (inputs['TC'].h || inputs['TC'].m || inputs['TC'].s)) {
                 tcDisplay.innerText = formatFullTime(getSecondsFromInput('TC'));
             }
 
-            // --- メイン表示エリア（モードによって完全に分ける） ---
             if (currentMode === 'SW') {
-                // 🌸 SWモード：入力中または計測値を表示
                 if (!swRunning && (inputs['SW'].h || inputs['SW'].m || inputs['SW'].s)) {
                     mainDisplay.innerText = formatInputToDisplay('SW') + '00';
                     mainDisplay.classList.remove('running-text');
@@ -277,11 +274,9 @@
                     updateSwDisplay();
                 }
             } else if (currentMode === 'TC') {
-                // 🌸 TCモード：TCの設定入力値を表示
                 mainDisplay.classList.remove('running-text');
                 mainDisplay.innerText = formatInputToDisplay('TC') || "0";
             } else {
-                // 🌸 CALCモード：計算結果のみを表示
                 mainDisplay.classList.remove('running-text');
                 if (!inputs['CALC'].h && !inputs['CALC'].m && !inputs['CALC'].s) {
                     mainDisplay.innerText = isWaitingNewInput ? formatTime(memorySeconds) : (isDetermined ? formatTime(memorySeconds) : "0");
@@ -298,7 +293,6 @@
         }
 
         function pressNum(n) {
-            // 走行中のモード入力をブロック
             if ((currentMode === 'TC' && tcRunning) || (currentMode === 'SW' && swRunning)) return;
             
             if (currentMode === 'CALC') {
