@@ -22,8 +22,12 @@
             color: #333; font-family: 'Inter', sans-serif; 
             display: flex; align-items: center; justify-content: center; 
             min-height: 100vh; margin: 0; user-select: none; 
-            /* 🌸 スマホの「引っ張って更新」を防止する魔法の1行！ */
-            overscroll-behavior-y: contain; 
+            /* CSSでの防止策 */
+            overscroll-behavior-y: none; 
+            overflow: hidden; /* 画面外へのスクロール自体を禁止 */
+            position: fixed; /* 画面を固定 */
+            width: 100%;
+            height: 100%;
         }
 
         .console { width: 95%; max-width: 480px; padding: 25px; display: flex; flex-direction: column; gap: 25px; }
@@ -161,20 +165,10 @@
     <script>
         let currentMode = 'CALC';
         let upperView = 'clock'; 
-        
-        // システム状態
         let tcBaseSeconds = 0, tcElapsedMs = 0, tcRunning = false, tcStartTime = 0, tcInterval = null;
         let swElapsedMs = 0, swRunning = false, swStartTime = 0, swInterval = null;
-
-        // 計算機用
         let memorySeconds = 0, currentOp = null, isDetermined = false, isWaitingNewInput = false;
-        
-        // モード別入力バッファ
-        let inputs = {
-            'CALC': { h: "", m: "", s: "" },
-            'TC':   { h: "", m: "", s: "" },
-            'SW':   { h: "", m: "", s: "" }
-        };
+        let inputs = { 'CALC': { h: "", m: "", s: "" }, 'TC': { h: "", m: "", s: "" }, 'SW': { h: "", m: "", s: "" } };
         
         const lever = document.getElementById('lever-knob');
         const modeIndicator = document.getElementById('mode-indicator');
@@ -193,7 +187,6 @@
             if (m === 'CALC') { lever.style.transform = 'rotate(-40deg)'; modeIndicator.innerText = 'CALC'; }
             else if (m === 'TC') { lever.style.transform = 'rotate(0deg)'; modeIndicator.innerText = 'TC SET / RUN'; }
             else if (m === 'SW') { lever.style.transform = 'rotate(40deg)'; modeIndicator.innerText = 'STOPWATCH'; }
-            
             if (currentMode === 'CALC') lcdPanel.classList.remove('active-lcd');
             else lcdPanel.classList.add('active-lcd');
             updateDisplay();
@@ -205,57 +198,29 @@
         }
 
         function handleReset() {
-            if (currentMode === 'TC') {
-                stopTC();
-                tcBaseSeconds = 0; tcElapsedMs = 0;
-                clearModeInput('TC');
-                updateDisplay();
-            }
-            if (currentMode === 'SW' && !swRunning) {
-                swElapsedMs = 0;
-                clearModeInput('SW');
-                updateDisplay();
-            }
+            if (currentMode === 'TC') { stopTC(); tcBaseSeconds = 0; tcElapsedMs = 0; clearModeInput('TC'); updateDisplay(); }
+            if (currentMode === 'SW' && !swRunning) { swElapsedMs = 0; clearModeInput('SW'); updateDisplay(); }
         }
 
         function lcdTapped() { handleStartStop(); }
 
         function startTC() {
             let tcIn = inputs['TC'];
-            if (tcIn.h || tcIn.m || tcIn.s) {
-                tcBaseSeconds = getSecondsFromInput('TC');
-                tcElapsedMs = 0;
-                clearModeInput('TC');
-            }
-            tcRunning = true;
-            tcStartTime = Date.now() - tcElapsedMs;
-            tcInterval = setInterval(() => {
-                tcElapsedMs = Date.now() - tcStartTime;
-                updateDisplay();
-            }, 100);
+            if (tcIn.h || tcIn.m || tcIn.s) { tcBaseSeconds = getSecondsFromInput('TC'); tcElapsedMs = 0; clearModeInput('TC'); }
+            tcRunning = true; tcStartTime = Date.now() - tcElapsedMs;
+            tcInterval = setInterval(() => { tcElapsedMs = Date.now() - tcStartTime; updateDisplay(); }, 100);
             updateDisplay();
         }
 
-        function stopTC() {
-            tcRunning = false;
-            if (tcInterval) clearInterval(tcInterval);
-        }
+        function stopTC() { tcRunning = false; if (tcInterval) clearInterval(tcInterval); }
 
         function toggleSW() {
             if (!swRunning) {
                 let swIn = inputs['SW'];
-                if (swIn.h || swIn.m || swIn.s) {
-                    swElapsedMs = getSecondsFromInput('SW') * 1000;
-                    clearModeInput('SW');
-                }
+                if (swIn.h || swIn.m || swIn.s) { swElapsedMs = getSecondsFromInput('SW') * 1000; clearModeInput('SW'); }
                 swRunning = true; swStartTime = Date.now() - swElapsedMs;
-                swInterval = setInterval(() => { 
-                    swElapsedMs = Date.now() - swStartTime; 
-                    if (currentMode === 'SW') updateSwDisplay();
-                }, 10);
-            } else { 
-                swRunning = false; clearInterval(swInterval); 
-            }
+                swInterval = setInterval(() => { swElapsedMs = Date.now() - swStartTime; if (currentMode === 'SW') updateSwDisplay(); }, 10);
+            } else { swRunning = false; clearInterval(swInterval); }
             updateDisplay();
         }
 
@@ -265,24 +230,16 @@
             if (currentMode === 'TC' && !tcRunning && (inputs['TC'].h || inputs['TC'].m || inputs['TC'].s)) {
                 tcDisplay.innerText = formatFullTime(getSecondsFromInput('TC'));
             }
-
             if (currentMode === 'SW') {
                 if (!swRunning && (inputs['SW'].h || inputs['SW'].m || inputs['SW'].s)) {
                     mainDisplay.innerText = formatInputToDisplay('SW') + '00';
-                    mainDisplay.classList.remove('running-text');
-                } else {
-                    updateSwDisplay();
-                }
+                } else { updateSwDisplay(); }
             } else if (currentMode === 'TC') {
-                mainDisplay.classList.remove('running-text');
                 mainDisplay.innerText = formatInputToDisplay('TC') || "0";
             } else {
-                mainDisplay.classList.remove('running-text');
                 if (!inputs['CALC'].h && !inputs['CALC'].m && !inputs['CALC'].s) {
                     mainDisplay.innerText = isWaitingNewInput ? formatTime(memorySeconds) : (isDetermined ? formatTime(memorySeconds) : "0");
-                } else {
-                    mainDisplay.innerText = formatInputToDisplay('CALC');
-                }
+                } else { mainDisplay.innerText = formatInputToDisplay('CALC'); }
             }
         }
 
@@ -294,16 +251,13 @@
 
         function pressNum(n) {
             if ((currentMode === 'TC' && tcRunning) || (currentMode === 'SW' && swRunning)) return;
-            
             if (currentMode === 'CALC') {
                 if (isDetermined) { memorySeconds = 0; clearModeInput('CALC'); isDetermined = false; }
                 if (isWaitingNewInput) { clearModeInput('CALC'); isWaitingNewInput = false; }
             }
-
             let target = inputs[currentMode];
             let activeStr = (target.h + target.m.padStart(target.h?2:0,'0') + target.s.padStart((target.m||target.h)?2:0,'0'));
             if (activeStr.length >= 6) return;
-            
             let nextActive = (activeStr === "0" ? "" : activeStr) + n;
             target.s = nextActive.slice(-2);
             target.m = nextActive.length > 2 ? nextActive.slice(-4, -2) : "";
@@ -368,8 +322,7 @@
 
         function allClear() {
             if (currentMode === 'CALC') { memorySeconds = 0; currentOp = null; isDetermined = false; isWaitingNewInput = false; document.getElementById('op-sign').innerText = ""; }
-            clearModeInput(currentMode);
-            updateDisplay();
+            clearModeInput(currentMode); updateDisplay();
         }
 
         function selectUpperDisplay(target) {
@@ -391,6 +344,14 @@
         setInterval(updateRealTime, 1000);
         updateRealTime();
         setMode('CALC');
+
+        // 🌸 鉄壁の防止策：スクロールの動きを強制キャンセル！
+        document.addEventListener('touchmove', function(e) {
+            if (e.touches.length > 0) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
     </script>
 </body>
 </html>
