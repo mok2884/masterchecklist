@@ -7,37 +7,34 @@
     <title>球数カウンタ - Official</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
     <style>
-        /* タップ時の標準ハイライトを透明化 & ズーム防止 */
         * {
             -webkit-tap-highlight-color: transparent;
             outline: none;
             touch-action: manipulation;
+            box-sizing: border-box;
         }
 
         body {
-            background-color: #c0c0c0; /* 落ち着いたグレー */
+            background-color: #c0c0c0;
             color: #B22222; 
             margin: 0;
             padding: 0;
-            /* height ではなく min-height にして、はみ出しを防ぐ */
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
             align-items: center;
             font-family: 'Noto Sans JP', sans-serif;
-            overflow: hidden;
+            /* overflow: hidden; を外して、はみ出しによる「消失」を防ぐ */
             user-select: none;
             -webkit-user-select: none;
             cursor: pointer;
         }
 
         #title {
-            font-size: 8vw;
+            font-size: 7vw; /* 少しだけ小さく */
             font-weight: bold;
             letter-spacing: 0.8em;
-            /* 上の余白を少し詰めて安定させる */
-            margin-top: 30px;
+            margin-top: 15px; /* 上の隙間を最小限に */
             color: #444444;
             padding-left: 0.8em;
         }
@@ -47,22 +44,20 @@
             align-items: center;
             justify-content: center;
             flex-grow: 1;
-            /* カウンター自体の上下余白を調整 */
-            margin: 10px 0;
+            width: 100%;
         }
 
         #counter {
             font-family: 'Inter', sans-serif;
-            font-size: 55vw;
+            font-size: 50vw; /* 55vwから少し縮小して縦のスペースを確保 */
             line-height: 1;
             font-variant-numeric: tabular-nums;
             display: inline-block;
-            transform: scaleX(0.85); /* 東京ドーム風スリム */
+            transform: scaleX(0.85);
             transform-origin: center;
             transition: transform 0.05s ease-out;
         }
 
-        /* 控えめボワン（1.08倍） */
         .pulse {
             animation: pulse-animation 0.35s ease-out;
         }
@@ -74,13 +69,13 @@
         }
 
         #instructions {
-            font-size: 3.8vw;
+            font-size: 3.5vw; /* 文字も少しだけ凝縮 */
             color: #666666;
             text-align: center;
-            /* 下の余白を vh から固定値に変更してはみ出し防止 */
-            margin-bottom: 25px;
-            line-height: 1.6;
+            margin-bottom: 20px; /* 下端にぶつからない程度の余白 */
+            line-height: 1.4;
             letter-spacing: 0.05em;
+            width: 100%;
         }
     </style>
 </head>
@@ -91,8 +86,7 @@
     </div>
     <div id="instructions">
         ※操作説明<br>
-        ※カウントアップ：画面タップ<br>
-        ※リセット：画面長押し
+        ※カウントアップ：画面タップ / ※リセット：画面長押し
     </div>
 
     <script>
@@ -120,7 +114,7 @@
 
         const countUp = () => {
             const now = Date.now();
-            if (now - lastTapTime < 250) return; // 0.25秒ガード
+            if (now - lastTapTime < 250) return;
             
             lastTapTime = now;
             count++;
