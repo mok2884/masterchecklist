@@ -6,6 +6,7 @@
     <title>球数カウンタ - Official</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
     <style>
+        /* タップ時のハイライト透明化 & 操作の最適化 */
         * {
             -webkit-tap-highlight-color: transparent;
             outline: none;
@@ -14,50 +15,50 @@
         }
 
         body {
-            background-color: #c0c0c0;
+            background-color: #c0c0c0; /* 落ち着いたグレー */
             color: #B22222; 
             margin: 0;
             padding: 0;
-            /* 最小でも画面いっぱいの高さを確保 */
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            /* パーツを均等に配置して、上下の「突き抜け」を防ぐ */
-            justify-content: space-around;
+            /* 上・中・下でバランスよく配置 */
+            justify-content: space-between;
             align-items: center;
             font-family: 'Noto Sans JP', sans-serif;
+            overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
             cursor: pointer;
-            /* 万が一のときも消さずにスクロールを許可 */
-            overflow-y: auto;
         }
 
         #title {
-            font-size: 5vh; /* 縦の長さに合わせることでPCでも巨大化を防ぐ */
+            /* アドレスバー対策：上部にしっかり余裕を持たせる */
+            font-size: 5vh;
             font-weight: bold;
             letter-spacing: 0.8em;
             color: #444444;
             padding-left: 0.8em;
-            margin: 2vh 0;
+            margin-top: 8vh;
+            margin-bottom: 0;
         }
 
         #counter-container {
             display: flex;
             align-items: center;
             justify-content: center;
-            /* 数字が上下を圧迫しすぎないようにする */
-            max-height: 50vh;
+            flex-grow: 1;
+            width: 100%;
         }
 
         #counter {
             font-family: 'Inter', sans-serif;
-            /* 横幅(vw)と高さ(vh)の小さい方に合わせることで、絶対にはみ出さないようにする */
-            font-size: min(45vw, 45vh); 
+            /* 画面比率に合わせて最大化。2桁でもバランスが良いサイズへ微増 */
+            font-size: min(50vw, 50vh); 
             line-height: 1;
             font-variant-numeric: tabular-nums;
             display: inline-block;
-            transform: scaleX(0.85);
+            transform: scaleX(0.85); /* 東京ドーム風スリム */
             transform-origin: center;
             transition: transform 0.05s ease-out;
         }
@@ -73,20 +74,23 @@
         }
 
         #instructions {
-            font-size: min(3.5vw, 2.5vh); /* 文字も画面に合わせて縮小 */
+            /* 下部の隙間をさらに広く確保（画面高さの18%） */
+            font-size: min(3.8vw, 2.8vh);
             color: #666666;
             text-align: center;
-            line-height: 1.6;
+            line-height: 1.8;
             letter-spacing: 0.05em;
-            margin: 2vh 0 4vh 0; /* 下を少し多めに空ける指示を維持 */
+            margin-bottom: 18vh;
         }
     </style>
 </head>
 <body id="tap-area">
     <div id="title">球数</div>
+
     <div id="counter-container">
         <div id="counter">0</div>
     </div>
+
     <div id="instructions">
         ※操作説明<br>
         ※カウントアップ：画面タップ<br>
@@ -101,6 +105,7 @@
         const counterDisplay = document.getElementById('counter');
         const tapArea = document.getElementById('tap-area');
 
+        // 画面消灯防止の処理
         let wakeLock = null;
         const requestWakeLock = async () => {
             try {
@@ -118,7 +123,8 @@
 
         const countUp = () => {
             const now = Date.now();
-            if (now - lastTapTime < 250) return;
+            if (now - lastTapTime < 250) return; // 0.25秒ガード
+            
             lastTapTime = now;
             count++;
             counterDisplay.innerText = count;
@@ -148,11 +154,13 @@
             }
         };
 
+        // イベントリスナー登録（タッチ・マウス両対応）
         tapArea.addEventListener('touchstart', startAction, {passive: false});
         tapArea.addEventListener('touchend', endAction, {passive: false});
         tapArea.addEventListener('mousedown', (e) => { if (e.button === 0) startAction(e); });
         tapArea.addEventListener('mouseup', (e) => { if (e.button === 0) endAction(e); });
 
+        // 画面復帰時に点灯防止を再要求
         document.addEventListener('visibilitychange', () => {
             if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
         });
