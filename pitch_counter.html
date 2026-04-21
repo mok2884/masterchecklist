@@ -8,7 +8,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="data:application/json;base64,ewogICJkaXNwbGF5IjogInN0YWRhbG9uZSIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAibmFtZSI6ICJQaXRjaCBDb3VudGVyIgp9">
+    <link rel="manifest" href="data:application/json;base64,ewogICJkaXNwbGF5IjogInN0YWRhbG9uZSIsCiAgIm5hbWUiOiAiUGl0Y2ggQ291bnRlciIKfQ==">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
     <style>
@@ -39,9 +39,11 @@
         #title {
             font-size: 8vw;
             font-weight: bold;
+            /* 「球数」の間隔を少しだけ広く調整 */
             letter-spacing: 0.8em;
             margin-top: 6vh;
             color: #444444;
+            /* 右端の余白を補正して中央に寄せる */
             padding-left: 0.8em;
         }
 
@@ -63,6 +65,7 @@
             transition: transform 0.05s ease-out;
         }
 
+        /* 控えめボワン（1.08倍） */
         .pulse {
             animation: pulse-animation 0.35s ease-out;
         }
@@ -102,7 +105,7 @@
         const counterDisplay = document.getElementById('counter');
         const tapArea = document.getElementById('tap-area');
 
-        // ★追加：消灯防止のダメ押し（無音オーディオ）
+        // ★追加：消灯防止の補助（無音オーディオ）
         const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
         silentAudio.loop = true;
 
@@ -112,7 +115,7 @@
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
                 }
-                // WakeLockと同時に無音再生も開始
+                // WakeLockと同時に無音再生も開始して消灯を阻止
                 silentAudio.play().catch(() => {});
             } catch (err) {}
         };
@@ -143,7 +146,6 @@
 
         const startAction = (e) => {
             e.preventDefault();
-            // 最初の操作でWakeLockと音声を起動
             if (!wakeLock) requestWakeLock();
             isResetting = false;
             timer = setTimeout(resetCount, 600);
