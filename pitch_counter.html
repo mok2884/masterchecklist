@@ -3,26 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>球数カウンタ - Official</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
     <style>
+        /* タップ時の標準ハイライトを透明化 & ズーム防止 */
         * {
             -webkit-tap-highlight-color: transparent;
             outline: none;
             touch-action: manipulation;
-            box-sizing: border-box;
         }
 
         body {
-            background-color: #c0c0c0;
+            background-color: #c0c0c0; /* 落ち着いたグレー */
             color: #B22222; 
             margin: 0;
             padding: 0;
             height: 100vh;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
             align-items: center;
             font-family: 'Noto Sans JP', sans-serif;
             overflow: hidden;
@@ -31,62 +30,36 @@
             cursor: pointer;
         }
 
-        /* 画面上部のクッションエリア */
-        #top-space {
-            height: 12vh; /* アドレスバー対策の空白 */
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-        }
-
         #title {
-            font-size: 7vw;
+            font-size: 8vw;
             font-weight: bold;
             letter-spacing: 0.8em;
+            /* 画面比率で上に余裕を作る（上端から10%下げる） */
+            margin-top: 10vh;
             color: #444444;
             padding-left: 0.8em;
-            margin: 0;
         }
 
-        /* 真ん中の数字エリア：残りの高さを全部使う */
         #counter-container {
-            flex-grow: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 100%;
+            flex-grow: 1;
         }
 
         #counter {
             font-family: 'Inter', sans-serif;
-            /* 画面の高さに余裕を持たせたサイズ (高さの45%程度) */
-            font-size: 45vh; 
+            /* 2桁になっても「ほどよい」比率（画面横幅の45%） */
+            font-size: 45vw;
             line-height: 1;
             font-variant-numeric: tabular-nums;
             display: inline-block;
-            transform: scaleX(0.85);
+            transform: scaleX(0.85); /* 東京ドーム風スリム */
             transform-origin: center;
             transition: transform 0.05s ease-out;
         }
 
-        /* 画面下部のクッションエリア：説明文を含む */
-        #bottom-space {
-            height: 18vh; /* ホームバー対策で上より広めに設定 */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-        }
-
-        #instructions {
-            font-size: 3.5vw;
-            color: #666666;
-            text-align: center;
-            line-height: 1.6;
-            letter-spacing: 0.05em;
-            margin: 0;
-        }
-
+        /* 控えめボワン（1.08倍） */
         .pulse {
             animation: pulse-animation 0.35s ease-out;
         }
@@ -96,23 +69,27 @@
             40% { transform: scaleX(0.9) scaleY(1.08); } 
             100% { transform: scaleX(0.85) scaleY(1); }
         }
+
+        #instructions {
+            font-size: 3.8vw;
+            color: #666666;
+            text-align: center;
+            /* 指示通り、下の方はアドレスバー対策で多め（15%）に空ける */
+            margin-bottom: 15vh;
+            line-height: 1.8;
+            letter-spacing: 0.05em;
+        }
     </style>
 </head>
 <body id="tap-area">
-    <div id="top-space">
-        <div id="title">球数</div>
-    </div>
-
+    <div id="title">球数</div>
     <div id="counter-container">
         <div id="counter">0</div>
     </div>
-
-    <div id="bottom-space">
-        <div id="instructions">
-            ※操作説明<br>
-            ※カウントアップ：画面タップ<br>
-            ※リセット：画面長押し
-        </div>
+    <div id="instructions">
+        ※操作説明<br>
+        ※カウントアップ：画面タップ<br>
+        ※リセット：画面長押し
     </div>
 
     <script>
@@ -140,7 +117,8 @@
 
         const countUp = () => {
             const now = Date.now();
-            if (now - lastTapTime < 250) return;
+            if (now - lastTapTime < 250) return; // 0.25秒ガード
+            
             lastTapTime = now;
             count++;
             counterDisplay.innerText = count;
