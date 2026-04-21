@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>球数カウンタ - Official</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        /* タップ時の標準ハイライトを透明化 & ズーム防止 */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: #c0c0c0; /* 落ち着いたグレー */
+            color: #B22222; 
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Noto Sans JP', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: pointer;
+        }
+
+        #title {
+            font-size: 8vw;
+            font-weight: bold;
+            /* 「球数」の間隔を少しだけ広く調整 */
+            letter-spacing: 0.8em;
+            margin-top: 6vh;
+            color: #444444;
+            /* 右端の余白を補正して中央に寄せる */
+            padding-left: 0.8em;
+        }
+
+        #counter-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+        }
+
+        #counter {
+            font-family: 'Inter', sans-serif;
+            font-size: 55vw;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+            display: inline-block;
+            transform: scaleX(0.85); /* 東京ドーム風スリム */
+            transform-origin: center;
+            transition: transform 0.05s ease-out;
+        }
+
+        /* 控えめボワン（1.08倍） */
+        .pulse {
+            animation: pulse-animation 0.35s ease-out;
+        }
+
+        @keyframes pulse-animation {
+            0% { transform: scaleX(0.85) scaleY(1); }
+            40% { transform: scaleX(0.9) scaleY(1.08); } 
+            100% { transform: scaleX(0.85) scaleY(1); }
+        }
+
+        #instructions {
+            font-size: 3.8vw;
+            color: #666666;
+            text-align: center;
+            margin-bottom: 6vh;
+            line-height: 1.8;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body id="tap-area">
+    <div id="title">球数</div>
+    <div id="counter-container">
+        <div id="counter">0</div>
+    </div>
+    <div id="instructions">
+        ※操作説明<br>
+        ※カウントアップ：画面タップ<br>
+        ※リセット：画面長押し
+    </div>
+
+    <script>
+        let count = 0;
+        let timer;
+        let isResetting = false;
+        let lastTapTime = 0; 
+        const counterDisplay = document.getElementById('counter');
+        const tapArea = document.getElementById('tap-area');
+
+        let wakeLock = null;
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {}
+        };
+
+        const triggerPulse = () => {
+            counterDisplay.classList.remove('pulse');
+            void counterDisplay.offsetWidth; 
+            counterDisplay.classList.add('pulse');
+        };
+
+        const countUp = () => {
+            const now = Date.now();
+            if (now - lastTapTime < 250) return; // 0.25秒ガード
+            
+            lastTapTime = now;
+            count++;
+            counterDisplay.innerText = count;
+            triggerPulse(); 
+        };
+
+        const resetCount = () => {
+            count = 0;
+            counterDisplay.innerText = count;
+            isResetting = true;
+            triggerPulse(); 
+            if (navigator.vibrate) navigator.vibrate(200);
+        };
+
+        const startAction = (e) => {
+            e.preventDefault();
+            if (!wakeLock) requestWakeLock();
+            isResetting = false;
+            timer = setTimeout(resetCount, 600);
+        };
+
+        const endAction = (e) => {
+            e.preventDefault();
+            clearTimeout(timer);
+            if (!isResetting) {
+                countUp();
+            }
+        };
+
+        tapArea.addEventListener('touchstart', startAction, {passive: false});
+        tapArea.addEventListener('touchend', endAction, {passive: false});
+        tapArea.addEventListener('mousedown', (e) => { if (e.button === 0) startAction(e); });
+        tapArea.addEventListener('mouseup', (e) => { if (e.button === 0) endAction(e); });
+
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
+        });
+    </script>
+</body>
+</html>
