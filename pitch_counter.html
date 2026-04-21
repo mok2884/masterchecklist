@@ -19,24 +19,25 @@
             color: #B22222; 
             margin: 0;
             padding: 0;
-            min-height: 100vh;
+            height: 100vh; /* 画面にぴったり収める */
             display: flex;
             flex-direction: column;
+            justify-content: space-between; /* 上・中・下で綺麗に分ける */
             align-items: center;
             font-family: 'Noto Sans JP', sans-serif;
-            /* overflow: hidden; を外して、はみ出しによる「消失」を防ぐ */
+            overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
-            cursor: pointer;
         }
 
         #title {
-            font-size: 7vw; /* 少しだけ小さく */
+            font-size: 7vw;
             font-weight: bold;
             letter-spacing: 0.8em;
-            margin-top: 15px; /* 上の隙間を最小限に */
+            margin-top: 5vh; /* 画面の高さに合わせた余白 */
             color: #444444;
             padding-left: 0.8em;
+            text-align: center;
         }
 
         #counter-container {
@@ -44,12 +45,11 @@
             align-items: center;
             justify-content: center;
             flex-grow: 1;
-            width: 100%;
         }
 
         #counter {
             font-family: 'Inter', sans-serif;
-            font-size: 50vw; /* 55vwから少し縮小して縦のスペースを確保 */
+            font-size: 50vw; 
             line-height: 1;
             font-variant-numeric: tabular-nums;
             display: inline-block;
@@ -69,24 +69,26 @@
         }
 
         #instructions {
-            font-size: 3.5vw; /* 文字も少しだけ凝縮 */
+            font-size: 3.5vw;
             color: #666666;
             text-align: center;
-            margin-bottom: 20px; /* 下端にぶつからない程度の余白 */
-            line-height: 1.4;
+            margin-bottom: 5vh; /* 下の縁から少し浮かせる */
+            line-height: 1.6;
             letter-spacing: 0.05em;
-            width: 100%;
         }
     </style>
 </head>
 <body id="tap-area">
     <div id="title">球数</div>
+
     <div id="counter-container">
         <div id="counter">0</div>
     </div>
+
     <div id="instructions">
         ※操作説明<br>
-        ※カウントアップ：画面タップ / ※リセット：画面長押し
+        ※カウントアップ：画面タップ<br>
+        ※リセット：画面長押し
     </div>
 
     <script>
@@ -115,7 +117,6 @@
         const countUp = () => {
             const now = Date.now();
             if (now - lastTapTime < 250) return;
-            
             lastTapTime = now;
             count++;
             counterDisplay.innerText = count;
