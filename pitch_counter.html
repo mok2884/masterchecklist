@@ -6,7 +6,6 @@
     <title>球数カウンタ - Official</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
     <style>
-        /* タップ時のハイライト透明化 & 操作の最適化 */
         * {
             -webkit-tap-highlight-color: transparent;
             outline: none;
@@ -15,14 +14,13 @@
         }
 
         body {
-            background-color: #c0c0c0; /* 落ち着いたグレー */
+            background-color: #c0c0c0;
             color: #B22222; 
             margin: 0;
             padding: 0;
             height: 100vh;
             display: flex;
             flex-direction: column;
-            /* 上・中・下でバランスよく配置 */
             justify-content: space-between;
             align-items: center;
             font-family: 'Noto Sans JP', sans-serif;
@@ -33,7 +31,6 @@
         }
 
         #title {
-            /* アドレスバー対策：上部にしっかり余裕を持たせる */
             font-size: 5vh;
             font-weight: bold;
             letter-spacing: 0.8em;
@@ -53,12 +50,11 @@
 
         #counter {
             font-family: 'Inter', sans-serif;
-            /* 画面比率に合わせて最大化。2桁でもバランスが良いサイズへ微増 */
             font-size: min(50vw, 50vh); 
             line-height: 1;
             font-variant-numeric: tabular-nums;
             display: inline-block;
-            transform: scaleX(0.85); /* 東京ドーム風スリム */
+            transform: scaleX(0.85);
             transform-origin: center;
             transition: transform 0.05s ease-out;
         }
@@ -74,7 +70,6 @@
         }
 
         #instructions {
-            /* 下部の隙間をさらに広く確保（画面高さの18%） */
             font-size: min(3.8vw, 2.8vh);
             color: #666666;
             text-align: center;
@@ -105,7 +100,6 @@
         const counterDisplay = document.getElementById('counter');
         const tapArea = document.getElementById('tap-area');
 
-        // 画面消灯防止の処理
         let wakeLock = null;
         const requestWakeLock = async () => {
             try {
@@ -123,7 +117,7 @@
 
         const countUp = () => {
             const now = Date.now();
-            if (now - lastTapTime < 250) return; // 0.25秒ガード
+            if (now - lastTapTime < 250) return;
             
             lastTapTime = now;
             count++;
@@ -143,7 +137,8 @@
             e.preventDefault();
             if (!wakeLock) requestWakeLock();
             isResetting = false;
-            timer = setTimeout(resetCount, 600);
+            // リセット時間を0.4秒に設定
+            timer = setTimeout(resetCount, 400);
         };
 
         const endAction = (e) => {
@@ -154,13 +149,11 @@
             }
         };
 
-        // イベントリスナー登録（タッチ・マウス両対応）
         tapArea.addEventListener('touchstart', startAction, {passive: false});
         tapArea.addEventListener('touchend', endAction, {passive: false});
         tapArea.addEventListener('mousedown', (e) => { if (e.button === 0) startAction(e); });
         tapArea.addEventListener('mouseup', (e) => { if (e.button === 0) endAction(e); });
 
-        // 画面復帰時に点灯防止を再要求
         document.addEventListener('visibilitychange', () => {
             if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
         });
