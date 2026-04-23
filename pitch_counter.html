@@ -137,8 +137,8 @@
             e.preventDefault();
             if (!wakeLock) requestWakeLock();
             isResetting = false;
-            // リセット時間を0.4秒に設定
-            timer = setTimeout(resetCount, 400);
+            // リセット時間をさらに詰めて0.33秒に
+            timer = setTimeout(resetCount, 330);
         };
 
         const endAction = (e) => {
