@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SE Sampler - PLAY</title>
+    <title>PLAY - Physical Logic</title>
     <style>
         * {
             -webkit-tap-highlight-color: transparent;
             box-sizing: border-box;
         }
         body {
-            background-color: #000; /* 電池消費最小の黒 */
+            background-color: #000; /* 漆黒（省エネ） */
             color: white;
             margin: 0;
             height: 100vh;
@@ -23,7 +23,6 @@
             user-select: none;
         }
 
-        /* メインボタン：待機前はグレー */
         #play-button {
             width: 85vw;
             height: 55vh;
@@ -37,39 +36,39 @@
             font-weight: bold;
             color: #444;
             cursor: pointer;
-            transition: background-color 0.1s, transform 0.05s;
+            transition: background-color 0.1s, transform 0.1s;
         }
 
-        /* 音源スタンバイ：緑色 */
+        /* 音源セット時：深い緑 */
         #play-button.ready {
-            background-color: #006400; /* 暗めの緑（眩しすぎない） */
-            border-color: #00ff00;
-            color: #00ff00;
+            background-color: #004d00;
+            border-color: #00cc00;
+            color: #00cc00;
         }
 
-        /* 再生中：鮮やかな赤 */
+        /* 物理ボタンで「Space」が押された瞬間の演出（溜め） */
+        #play-button.pressing {
+            background-color: #8b0000;
+            transform: scale(0.92); /* ぐっと沈む */
+        }
+
+        /* 音が鳴る瞬間：鮮やかな赤 */
         #play-button.active {
             background-color: #ff0000 !important;
             border-color: #ffffff !important;
             color: #ffffff !important;
-            transform: scale(0.96);
         }
 
-        /* 1秒ロック中：沈んだ赤 */
+        /* 1秒間のロック中：沈んだ赤 */
         #play-button.locking {
-            background-color: #4d0000; 
-            border-color: #800000;
-            color: #800000;
+            background-color: #330000;
+            border-color: #660000;
+            color: #660000;
             cursor: default;
         }
 
-        #controls {
-            margin-top: 8vh;
-            text-align: center;
-        }
-        input[type="file"] {
-            display: none;
-        }
+        #controls { margin-top: 8vh; text-align: center; }
+        input[type="file"] { display: none; }
         .file-label {
             display: inline-block;
             padding: 12px 24px;
@@ -80,12 +79,7 @@
             font-size: 14px;
             color: #888;
         }
-        #status {
-            margin-top: 15px;
-            font-size: 13px;
-            color: #666;
-            letter-spacing: 0.1em;
-        }
+        #status { margin-top: 15px; font-size: 13px; color: #666; letter-spacing: 0.1em; }
     </style>
 </head>
 <body>
@@ -110,7 +104,7 @@
         let isLocking = false;
         let wakeLock = null;
 
-        const DB_NAME = 'SamplerDB_V2';
+        const DB_NAME = 'SamplerDB_Final';
         const STORE_NAME = 'Sounds';
 
         const initDB = () => {
@@ -123,9 +117,7 @@
 
         const requestWakeLock = async () => {
             try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                }
+                if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
             } catch (err) {}
         };
 
@@ -135,39 +127,47 @@
                 audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
                 playButton.classList.add('ready');
                 statusText.innerText = "STANDBY OK";
-                requestWakeLock(); // スタンバイ完了時にロック開始
-            } catch (e) {
-                statusText.innerText = "LOAD ERROR";
-            }
+                requestWakeLock();
+            } catch (e) { statusText.innerText = "LOAD ERROR"; }
         };
 
         const loadStoredSound = async () => {
             const db = await initDB();
             const tx = db.transaction(STORE_NAME, 'readonly');
             const req = tx.objectStore(STORE_NAME).get('currentSE');
-            req.onsuccess = () => {
-                if (req.result) setupAudio(req.result);
-            };
+            req.onsuccess = () => { if (req.result) setupAudio(req.result); };
         };
 
-        const playSound = () => {
+        // --- ぐっと押し込んで鳴らすメインロジック ---
+        const triggerSequence = () => {
             if (!audioBuffer || isLocking) return;
-
             if (audioContext.state === 'suspended') audioContext.resume();
 
-            const source = audioContext.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioContext.destination);
-            source.start(0);
-
             isLocking = true;
-            playButton.classList.add('active');
             
-            setTimeout(() => {
-                playButton.classList.remove('active');
-                playButton.classList.add('locking');
-            }, 100);
+            // 1. まず沈み込む（演出開始）
+            playButton.classList.add('pressing');
 
+            // 2. 0.12秒後に音を発火！
+            setTimeout(() => {
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+
+                // 3. 画面を鮮やかな赤に
+                playButton.classList.remove('pressing');
+                playButton.classList.add('active');
+
+                // 4. 演出を終わらせてロック状態へ
+                setTimeout(() => {
+                    playButton.classList.remove('active');
+                    playButton.classList.add('locking');
+                }, 150);
+
+            }, 120); // 溜めの時間（120ミリ秒）
+
+            // 5. 1秒後に完全復帰
             setTimeout(() => {
                 isLocking = false;
                 playButton.classList.remove('locking');
@@ -185,16 +185,24 @@
             await setupAudio(arrayBuffer);
         });
 
-        const handleTrigger = (e) => {
+        // 画面タップ・マウス操作
+        const handleInteraction = (e) => {
             e.preventDefault();
-            playSound();
+            triggerSequence();
             if (!wakeLock) requestWakeLock();
         };
 
-        playButton.addEventListener('touchstart', handleTrigger, {passive: false});
-        playButton.addEventListener('mousedown', handleTrigger);
+        playButton.addEventListener('touchstart', handleInteraction, {passive: false});
+        playButton.addEventListener('mousedown', handleInteraction);
+
+        // キーボード（スペースキー）対応
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' || e.code === 'Enter') handleTrigger(e);
+            // スペースキーまたはエンターキーが押されたら発火
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault(); // 画面スクロールなどを防止
+                triggerSequence();
+                if (!wakeLock) requestWakeLock();
+            }
         });
 
         document.addEventListener('visibilitychange', () => {
