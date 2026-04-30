@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>PTT MATRIX - STABLE</title>
+    <!-- 視認性の良い等幅フォント -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <title>PTT MATRIX - SIDE TONE</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { 
@@ -14,22 +16,16 @@
         }
 
         .header-panel { height: 22vh; background: #2c2e31; display: flex; flex-direction: column; }
-        
         .top-controls { flex-grow: 1; display: flex; width: 100%; }
         
-        /* 時計：等幅フォントで幅を固定 */
+        /* 時計：見やすい等幅フォント */
         .clock-box { 
             width: 66%; display: flex; align-items: center; justify-content: center; 
-            font-family: 'Courier New', Courier, monospace; /* 幅が変わらないフォント */
-            font-size: 52px; font-weight: bold; color: #f1c40f;
+            font-family: 'Roboto Mono', monospace; font-size: 50px; color: #f1c40f;
             background: #111; border-right: 1px solid #444;
-            letter-spacing: 2px; /* 少し間隔を空けて視認性アップ */
         }
         
-        /* 設定ボタンエリア */
-        .config-box { 
-            width: 34%; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
+        .config-box { width: 34%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
         #ptt-area { 
             height: 56vh; width: 100%; background: #3a3f44;
@@ -42,19 +38,9 @@
         #ptt-area.locked { background: #d35400; color: #fff; }
 
         .footer-panel { height: 22vh; background: #2c2e31; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-
-        .safety-btn {
-            padding: 12px; width: 85%; background: #4a4f55; border: 2px solid #666;
-            border-radius: 8px; color: #fff; font-size: 16px; font-weight: bold;
-        }
+        .safety-btn { padding: 12px; width: 85%; background: #4a4f55; border: 2px solid #666; border-radius: 8px; color: #fff; font-size: 16px; font-weight: bold; }
         .safety-btn.active-lock { background: #d35400; border-color: #f39c12; }
-
-        /* 5回タップのガイド：動きを止めて、見やすさ重視 */
-        .tap-notice {
-            font-size: 13px; color: #fff; background: #c0392b;
-            padding: 3px 10px; border-radius: 4px; margin: 6px 0;
-            font-weight: bold; display: inline-block;
-        }
+        .tap-notice { font-size: 13px; color: #fff; background: #c0392b; padding: 3px 10px; border-radius: 4px; margin: 6px 0; font-weight: bold; }
 
         #status-display { font-size: 12px; color: #00ff00; background: #000; padding: 2px 0; }
     </style>
@@ -80,7 +66,6 @@
     <button class="safety-btn" id="lock-btn" onclick="tapAction('lock')">マイク常時ON（固定）</button>
 </div>
 
-<!-- 設定パネル（内容は前回同様） -->
 <div id="setup-panel" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:1000; padding:20px; box-sizing:border-box;">
     <h2 style="color:#f1c40f;">接続設定</h2>
     <select id="my-role" onchange="registerMe()" style="width:100%; padding:15px; margin-bottom:20px; font-size:18px;">
@@ -98,6 +83,25 @@
 
 <script>
     let peer = null, localStream = null, isLocked = false, counters = { config: 0, lock: 0 }, wakeLock = null;
+    let audioCtx = null, noiseNode = null, noiseGain = null;
+
+    // ノイズ生成（ホワイトノイズ）
+    function initNoise() {
+        if (audioCtx) return;
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const bufferSize = 2 * audioCtx.sampleRate,
+              buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate),
+              output = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
+        noiseNode = audioCtx.createBufferSource();
+        noiseNode.buffer = buffer;
+        noiseNode.loop = true;
+        noiseGain = audioCtx.createGain();
+        noiseGain.gain.value = 0; // 初期値は無音
+        noiseNode.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+        noiseNode.start();
+    }
 
     function updateClock() {
         const now = new Date();
@@ -128,6 +132,7 @@
     function registerMe() {
         const val = document.getElementById('my-role').value;
         if (!val) return;
+        initNoise(); // 登録時にオーディオコンテキスト開始
         if (peer) peer.destroy();
         peer = new Peer(idMap[val], { config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]}});
         peer.on('open', () => { document.getElementById('status-display').innerText = `待機中: ${val.toUpperCase()}`; });
@@ -155,6 +160,14 @@
         });
     }
 
+    function setSideTone(active) {
+        const role = document.getElementById('my-role').value;
+        if (role.startsWith('sat') && noiseGain) {
+            // 出先(sat)の時だけノイズを出す。0.015くらいが邪魔にならない「サー」音
+            noiseGain.gain.setTargetAtTime(active ? 0.015 : 0, audioCtx.currentTime, 0.05);
+        }
+    }
+
     function toggleLock() {
         if (!peer) return;
         isLocked = !isLocked;
@@ -164,10 +177,12 @@
             ptt.classList.add('locked'); ptt.innerText = "送信固定中 (ON)";
             btn.classList.add('active-lock');
             if(localStream) localStream.getAudioTracks()[0].enabled = true;
+            setSideTone(true);
         } else {
             ptt.classList.remove('locked'); ptt.innerText = "PUSH TO TALK";
             btn.classList.remove('active-lock');
             if(localStream) localStream.getAudioTracks()[0].enabled = false;
+            setSideTone(false);
         }
     }
 
@@ -177,11 +192,13 @@
         if (e.cancelable) e.preventDefault();
         localStream.getAudioTracks()[0].enabled = true;
         pttArea.classList.add('active'); pttArea.innerText = "送信中...";
+        setSideTone(true);
     };
     const stopTalk = () => {
         if (isLocked || !localStream) return;
         localStream.getAudioTracks()[0].enabled = false;
         pttArea.classList.remove('active'); pttArea.innerText = "PUSH TO TALK";
+        setSideTone(false);
     };
 
     pttArea.onmousedown = startTalk; pttArea.onmouseup = stopTalk;
