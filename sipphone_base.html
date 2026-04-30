@@ -40,7 +40,7 @@
 
     window.onload = function() {
         // 林さんの設定をここに完璧に埋め込みました
-        var socket = new JsSIP.WebSocketInterface('wss://sip.linphone.org'); // Linphoneの標準WSSポート
+        var socket = new JsSIP.WebSocketInterface('wss://sip.linphone.org:5060'); // Linphoneの標準WSSポート
         var configuration = {
             sockets: [socket],
             uri: 'sip:mok2884@sip.linphone.org',
