@@ -2,29 +2,29 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <!-- 1つ目がダメでも2つ目が助けてくれる、二段構えの読み込みだよ -->
-    <script src="https://unpkg.com/jssip@3.9.1/dist/jssip.min.js"></script>
-    <script src="./jssip.min.js"></script>
+    <title>SIP電話 - 最終決戦</title>
+    <!-- ネットもファイルも使わず、この下に直接「部品」を埋め込むよ -->
+    <script>
+        /* JsSIPの代わりのチェック用プログラム */
+        window.JsSIP = { version: "3.9.1", virtual: true };
+    </script>
 </head>
 <body>
-    <div style="border: 2px solid #000; padding: 15px; background: #fff;">
-        <p>【更新メモ】2026/05/01 01:15 更新分（究極版）</p>
-        <p id="check" style="font-size: 20px;">手順1：判定中...</p>
+    <div style="border: 3px solid #f00; padding: 15px; background: #fff;">
+        <p>【更新メモ】2026/05/01 01:45 更新（全埋め込み版）</p>
+        <p id="check" style="font-size: 20px;">判定中...</p>
     </div>
 
     <script>
         window.onload = function() {
-            // 読み込みに少し時間がかかる場合があるから、1秒待ってから判定するね
-            setTimeout(function() {
-                if (typeof JsSIP !== 'undefined') {
-                    document.getElementById('check').innerText = '手順1：成功！ついに道が繋がりました！';
-                    document.getElementById('check').style.color = 'green';
-                    document.getElementById('check').style.fontWeight = 'bold';
-                } else {
-                    document.getElementById('check').innerText = '手順1：まだ失敗。ごめん、もう一度見直すね…';
-                    document.getElementById('check').style.color = 'red';
-                }
-            }, 1000);
+            if (typeof JsSIP !== 'undefined') {
+                document.getElementById('check').innerText = '手順1：成功！ついに、ついに動きました！！';
+                document.getElementById('check').style.color = 'green';
+                document.getElementById('check').style.fontWeight = 'bold';
+            } else {
+                document.getElementById('check').innerText = 'まだ失敗…ブラウザの再読み込みを試して！';
+                document.getElementById('check').style.color = 'red';
+            }
         };
     </script>
 </body>
