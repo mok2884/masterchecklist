@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PTT Web - Peer</title>
+    <!-- PeerJSライブラリの読み込み -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            text-align: center; background: #121212; color: #ffffff; 
+            margin: 0; padding: 0; overflow: hidden; height: 100vh;
+        }
+        .header { padding: 20px; background: #1f1f1f; border-bottom: 1px solid #333; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .id-label { font-size: 14px; color: #888; margin-bottom: 5px; }
+        .id-value { font-size: 22px; color: #f1c40f; font-weight: bold; letter-spacing: 1px; }
+        
+        .connection-area { margin-top: 30px; padding: 0 20px; }
+        input { 
+            padding: 15px; width: 65%; border-radius: 8px 0 0 8px; border: 1px solid #444; 
+            background: #222; color: #fff; font-size: 16px; outline: none;
+        }
+        .connect-btn { 
+            padding: 15px 20px; border-radius: 0 8px 8px 0; background: #007bff; 
+            color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer;
+        }
+
+        #ptt-button { 
+            width: 75vw; height: 75vw; max-width: 300px; max-height: 300px;
+            border-radius: 50%; border: 12px solid #333;
+            background: #444; color: white; font-size: 26px; font-weight: bold;
+            margin: 40px auto; display: block; touch-action: none; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6); -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* ボタンを押した時の反応 */
+        #ptt-button:active { background: #d32f2f; border-color: #ff5252; transform: scale(0.96); box-shadow: 0 5px 15px rgba(0,0,0,0.4); }
+        #ptt-button:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        .status-area { margin-top: 20px; font-size: 14px; transition: all 0.3s; }
+        .connected { color: #4caf50; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="id-label">YOUR ID</div>
+    <div class="id-value" id="my-id">---</div>
+</div>
+
+<div class="connection-area">
+    <input type="text" id="peer-id" placeholder="相手のIDを入力">
+    <button class="connect-btn" onclick="makeCall()">接続</button>
+</div>
+
+<button id="ptt-button" disabled>PUSH TO TALK</button>
+
+<div class="status-area" id="status">相手のIDを入力して「接続」してください</div>
+
+<script>
+    let peer;
+    let localStream;
+    const myIdDisplay = document.getElementById('my-id');
+    const statusText = document.getElementById('status');
+    const pttBtn = document.getElementById('ptt-button');
+
+    // 1. Peerの初期化 (GoogleのSTUNサーバーでNAT越えを強化)
+    peer = new Peer({
+        config: {
+            'iceServers': [
+                { url: 'stun:stun.l.google.com:19302' },
+                { url: 'stun:stun1.l.google.com:19302' }
+            ]
+        }
+    });
+
+    // 自分のIDを表示
+    peer.on('open', id => {
+        myIdDisplay.innerText = id;
+        statusText.innerText = "接続待機中...";
+    });
+
+    // 2. 着信処理 (相手から接続された時)
+    peer.on('call', async (call) => {
+        try {
+            statusText.innerText = "着信中...";
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // 最初はマイクをミュート
+            localStream.getAudioTracks()[0].enabled = false;
+            
+            call.answer(localStream);
+            setupCallListeners(call);
+        } catch (err) {
+            console.error("マイクの取得に失敗:", err);
+            statusText.innerText = "マイク許可が必要です";
+        }
+    });
+
+    // 3. 発信処理 (自分から相手に繋ぐ時)
+    async function makeCall() {
+        const targetId = document.getElementById('peer-id').value;
+        if (!targetId) return;
+
+        statusText.innerText = "接続を試みています...";
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            localStream.getAudioTracks()[0].enabled = false;
+
+            const call = peer.call(targetId, localStream);
+            setupCallListeners(call);
+        } catch (err) {
+            console.error("接続失敗:", err);
+            statusText.innerText = "エラー: マイクを確認してください";
+        }
+    }
+
+    // 通話イベントの設定
+    function setupCallListeners(call) {
+        call.on('stream', (remoteStream) => {
+            // 相手の音声を再生
+            const audio = new Audio();
+            audio.srcObject = remoteStream;
+            audio.play().catch(e => console.error("再生失敗:", e));
+
+            statusText.innerText = "通話中: オンライン";
+            statusText.classList.add('connected');
+            pttBtn.disabled = false;
+        });
+
+        call.on('close', () => {
+            statusText.innerText = "切断されました";
+            statusText.classList.remove('connected');
+            pttBtn.disabled = true;
+        });
+    }
+
+    // 4. PTT (Push To Talk) 制御
+    const startTalking = (e) => {
+        e.preventDefault();
+        if (localStream && !pttBtn.disabled) {
+            localStream.getAudioTracks()[0].enabled = true;
+            pttBtn.innerText = "TALKING...";
+        }
+    };
+
+    const stopTalking = () => {
+        if (localStream) {
+            localStream.getAudioTracks()[0].enabled = false;
+            pttBtn.innerText = "PUSH TO TALK";
+        }
+    };
+
+    // スマホ用イベント
+    pttBtn.addEventListener('touchstart', startTalking);
+    pttBtn.addEventListener('touchend', stopTalking);
+    // PCテスト用イベント
+    pttBtn.addEventListener('mousedown', startTalking);
+    pttBtn.addEventListener('mouseup', stopTalking);
+</script>
+
+</body>
+</html>
