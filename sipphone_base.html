@@ -2,25 +2,24 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>SIP電話テスト</title>
-    <!-- 林さんがアップロードしてくれたファイルを直接指定します -->
-    <script src="jssip.min.js"></script>
+    <title>SIP電話 - 執念の再開</title>
+    <!-- 林さんがアップロードしたファイル名を、一文字も間違えずに指定します -->
+    <script src="./jssip.min.js"></script>
 </head>
 <body>
-    <div style="border: 2px solid #333; padding: 10px;">
-        <p>【更新メモ】2026/05/01 03:30 更新（シンプル版）</p>
+    <div style="border: 2px solid #333; padding: 15px; background: #fff;">
+        <p>【更新メモ】2026/05/01 04:30 更新（ファイル名再確認）</p>
         <p id="check">判定中...</p>
     </div>
 
     <script>
         window.onload = function() {
-            // ファイルの読み込みを少し待ってから判定
             setTimeout(function() {
                 if (typeof JsSIP !== 'undefined') {
-                    document.getElementById('check').innerText = '手順2：成功！林さんの置いたファイルを認識しました！';
+                    document.getElementById('check').innerText = '手順2：成功！林さんのファイルを捕まえましました！';
                     document.getElementById('check').style.color = 'green';
                 } else {
-                    document.getElementById('check').innerText = '手順2：失敗。やっぱりファイルが見つからないみたい…';
+                    document.getElementById('check').innerText = 'まだ失敗。ファイル名が「jssip.min.js」で合っているか見て！';
                     document.getElementById('check').style.color = 'red';
                 }
             }, 500);
