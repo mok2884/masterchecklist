@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <!-- 視認性の良い等幅フォント -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
-    <title>PTT MATRIX - SIDE TONE</title>
+    <title>PTT MATRIX - NO SLEEP</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { 
@@ -14,19 +13,14 @@
             background: #1a1c1e; color: #fff; margin: 0; height: 100vh; overflow: hidden; 
             display: flex; flex-direction: column; user-select: none;
         }
-
         .header-panel { height: 22vh; background: #2c2e31; display: flex; flex-direction: column; }
         .top-controls { flex-grow: 1; display: flex; width: 100%; }
-        
-        /* 時計：見やすい等幅フォント */
         .clock-box { 
             width: 66%; display: flex; align-items: center; justify-content: center; 
             font-family: 'Roboto Mono', monospace; font-size: 50px; color: #f1c40f;
             background: #111; border-right: 1px solid #444;
         }
-        
         .config-box { width: 34%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-
         #ptt-area { 
             height: 56vh; width: 100%; background: #3a3f44;
             display: flex; align-items: center; justify-content: center;
@@ -36,18 +30,24 @@
         }
         #ptt-area.active { background: #e74c3c; color: #fff; }
         #ptt-area.locked { background: #d35400; color: #fff; }
-
         .footer-panel { height: 22vh; background: #2c2e31; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .safety-btn { padding: 12px; width: 85%; background: #4a4f55; border: 2px solid #666; border-radius: 8px; color: #fff; font-size: 16px; font-weight: bold; }
         .safety-btn.active-lock { background: #d35400; border-color: #f39c12; }
         .tap-notice { font-size: 13px; color: #fff; background: #c0392b; padding: 3px 10px; border-radius: 4px; margin: 6px 0; font-weight: bold; }
-
-        #status-display { font-size: 12px; color: #00ff00; background: #000; padding: 2px 0; }
+        #status-display { font-size: 11px; color: #00ff00; background: #000; padding: 2px 0; height: 16px; overflow: hidden; }
+        
+        /* 画面消灯防止用の隠しビデオ */
+        #keep-awake-video { position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; }
     </style>
 </head>
 <body>
 
 <div id="status-display">待機中</div>
+
+<!-- 擬似ビデオ（インライン再生、ミュート必須） -->
+<video id="keep-awake-video" playsinline muted loop>
+  <source src="https://raw.githubusercontent.com/anars/blank-audio/master/250-milliseconds-of-silence.mp4" type="video/mp4">
+</video>
 
 <div class="header-panel">
     <div class="top-controls">
@@ -83,23 +83,24 @@
 
 <script>
     let peer = null, localStream = null, isLocked = false, counters = { config: 0, lock: 0 }, wakeLock = null;
-    let audioCtx = null, noiseNode = null, noiseGain = null;
+    let audioCtx = null, noiseGain = null;
 
-    // ノイズ生成（ホワイトノイズ）
+    // ビデオ再生による強制スリープ防止
+    function startVideoKeepAwake() {
+        const video = document.getElementById('keep-awake-video');
+        video.play().catch(e => console.log("Video play failed:", e));
+        document.getElementById('status-display').innerText += " [AWAKE-V: ON]";
+    }
+
     function initNoise() {
         if (audioCtx) return;
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const bufferSize = 2 * audioCtx.sampleRate,
-              buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate),
-              output = buffer.getChannelData(0);
+        const bufferSize = 2 * audioCtx.sampleRate, buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate), output = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
-        noiseNode = audioCtx.createBufferSource();
-        noiseNode.buffer = buffer;
-        noiseNode.loop = true;
-        noiseGain = audioCtx.createGain();
-        noiseGain.gain.value = 0; // 初期値は無音
-        noiseNode.connect(noiseGain);
-        noiseGain.connect(audioCtx.destination);
+        const noiseNode = audioCtx.createBufferSource();
+        noiseNode.buffer = buffer; noiseNode.loop = true;
+        noiseGain = audioCtx.createGain(); noiseGain.gain.value = 0;
+        noiseNode.connect(noiseGain); noiseGain.connect(audioCtx.destination);
         noiseNode.start();
     }
 
@@ -119,6 +120,7 @@
     function tapAction(type) {
         counters[type]++;
         requestWakeLock();
+        startVideoKeepAwake(); // タップした瞬間にビデオ再生を開始（ユーザー操作が必要なため）
         if (counters[type] >= 5) {
             if (type === 'config') document.getElementById('setup-panel').style.display = 'block';
             if (type === 'lock') toggleLock();
@@ -132,7 +134,8 @@
     function registerMe() {
         const val = document.getElementById('my-role').value;
         if (!val) return;
-        initNoise(); // 登録時にオーディオコンテキスト開始
+        initNoise();
+        startVideoKeepAwake();
         if (peer) peer.destroy();
         peer = new Peer(idMap[val], { config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]}});
         peer.on('open', () => { document.getElementById('status-display').innerText = `待機中: ${val.toUpperCase()}`; });
@@ -163,7 +166,6 @@
     function setSideTone(active) {
         const role = document.getElementById('my-role').value;
         if (role.startsWith('sat') && noiseGain) {
-            // 出先(sat)の時だけノイズを出す。0.015くらいが邪魔にならない「サー」音
             noiseGain.gain.setTargetAtTime(active ? 0.015 : 0, audioCtx.currentTime, 0.05);
         }
     }
