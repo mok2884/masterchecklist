@@ -2,27 +2,29 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <!-- ./ をつけることで、同じ場所にあるファイルを強制的に指定するよ -->
+    <!-- 1つ目がダメでも2つ目が助けてくれる、二段構えの読み込みだよ -->
+    <script src="https://unpkg.com/jssip@3.9.1/dist/jssip.min.js"></script>
     <script src="./jssip.min.js"></script>
 </head>
 <body>
-    <div style="border: 1px solid #000; padding: 10px;">
-        <p>【更新メモ】2026/05/01 01:00 更新分</p>
-        <p id="check">手順1：確認中...</p>
+    <div style="border: 2px solid #000; padding: 15px; background: #fff;">
+        <p>【更新メモ】2026/05/01 01:15 更新分（究極版）</p>
+        <p id="check" style="font-size: 20px;">手順1：判定中...</p>
     </div>
 
     <script>
         window.onload = function() {
-            // 少しだけ待ってからチェックするね
+            // 読み込みに少し時間がかかる場合があるから、1秒待ってから判定するね
             setTimeout(function() {
                 if (typeof JsSIP !== 'undefined') {
-                    document.getElementById('check').innerText = '手順1：成功！同じ場所の部品を認識しました！';
+                    document.getElementById('check').innerText = '手順1：成功！ついに道が繋がりました！';
                     document.getElementById('check').style.color = 'green';
+                    document.getElementById('check').style.fontWeight = 'bold';
                 } else {
-                    document.getElementById('check').innerText = '手順1：まだ失敗。GitHubが部品を隠してるみたい…';
+                    document.getElementById('check').innerText = '手順1：まだ失敗。ごめん、もう一度見直すね…';
                     document.getElementById('check').style.color = 'red';
                 }
-            }, 500);
+            }, 1000);
         };
     </script>
 </body>
