@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIP Base Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jssip/3.9.1/jssip.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #222; color: white; }
+        .card { background: #333; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #444; }
+        select, input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; font-size: 1rem; }
+        button { width: 100%; padding: 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
+        .btn-reg { background: #28a745; color: white; }
+        .btn-call { background: #007bff; color: white; margin-top: 10px; }
+        .btn-hangup { background: #dc3545; color: white; margin-top: 10px; }
+        #status { font-size: 1.2rem; font-weight: bold; color: #ffc107; text-align: center; display: block; margin: 10px 0; }
+        .online { color: #28a745 !important; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h3>1. 自分のアカウントを選択</h3>
+        <select id="user-select">
+            <option value="">-- 選択してください --</option>
+            <option value="mok2884">mok2884</option>
+            <option value="odoridomu">odoridomu</option>
+        </select>
+        <button class="btn-reg" onclick="doRegister()">ログイン (Register)</button>
+        <span id="status">OFFLINE</span>
+    </div>
+
+    <div id="call-section" class="card" style="display:none;">
+        <h3>2. 相手を呼び出す</h3>
+        <select id="target-select">
+            <option value="sip:odoridomu@sip.linphone.org">odoridomu へ発信</option>
+            <option value="sip:mok2884@sip.linphone.org">mok2884 へ発信</option>
+        </select>
+        <button class="btn-call" id="call-btn" onclick="doCall()">発信 (INVITE)</button>
+        <button class="btn-hangup" id="hangup-btn" onclick="doHangup()" disabled>終了 (BYE)</button>
+    </div>
+
+    <audio id="remote-audio" autoplay></audio>
+
+    <script>
+        // --- 裏側の設定データ ---
+        const SIP_DOMAIN = "sip.linphone.org";
+        const WS_URL = "wss://sip.linphone.org:4443"; // Linphoneの標準WebSocketポート(一般的には4443等)
+        const PASSWORDS = {
+            "mok2884": "linphonetech1242",
+            "odoridomu": "linphonetech1242"
+        };
+
+        let ua;
+        let session;
+
+        // --- レジスター処理 ---
+        function doRegister() {
+            const userId = document.getElementById('user-select').value;
+            if (!userId) return alert("アカウントを選んでね！");
+
+            const socket = new JsSIP.WebSocketInterface(WS_URL);
+            const configuration = {
+                sockets: [socket],
+                uri: `sip:${userId}@${SIP_DOMAIN}`,
+                password: PASSWORDS[userId]
+            };
+
+            ua = new JsSIP.UA(configuration);
+
+            ua.on('registered', () => {
+                const st = document.getElementById('status');
+                st.innerText = "ONLINE (Registered)";
+                st.classList.add('online');
+                document.getElementById('call-section').style.display = 'block';
+            });
+
+            ua.on('registrationFailed', (e) => {
+                alert("ログイン失敗: " + e.cause);
+            });
+
+            // 着信イベント
+            ua.on('newRTCSession', (data) => {
+                session = data.session;
+                if (session.direction === 'incoming') {
+                    if (confirm("着信です！応答しますか？")) {
+                        session.answer({ mediaConstraints: { audio: true, video: false } });
+                        handleSessionEvents();
+                    }
+                }
+            });
+
+            ua.start();
+        }
+
+        // --- 発信処理 ---
+        function doCall() {
+            const target = document.getElementById('target-select').value;
+            const options = {
+                mediaConstraints: { audio: true, video: false }
+            };
+            session = ua.call(target, options);
+            handleSessionEvents();
+        }
+
+        // --- セッション管理 ---
+        function handleSessionEvents() {
+            document.getElementById('hangup-btn').disabled = false;
+            document.getElementById('call-btn').disabled = true;
+
+            session.on('peerconnection', (data) => {
+                data.peerconnection.addEventListener('track', (e) => {
+                    document.getElementById('remote-audio').srcObject = e.streams[0];
+                });
+            });
+
+            session.on('ended', () => resetUI());
+            session.on('failed', (e) => {
+                alert("通話失敗: " + e.cause);
+                resetUI();
+            });
+        }
+
+        function doHangup() {
+            if (session) session.terminate();
+        }
+
+        function resetUI() {
+            document.getElementById('hangup-btn').disabled = true;
+            document.getElementById('call-btn').disabled = false;
+        }
+    </script>
+</body>
+</html>
