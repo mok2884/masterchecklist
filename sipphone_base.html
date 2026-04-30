@@ -4,7 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SIP Base Test</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jssip/3.9.1/jssip.min.js"></script>
+   <script src="https://unpkg.com/jssip@3.9.1/dist/jssip.min.js"></script>
+    <script>
+        window.onload = function() {
+            if (typeof JsSIP === 'undefined') {
+                alert("まだ部品が読み込めてないみたい。ネットに繋がってるかな？");
+            } else {
+                console.log("JsSIP読み込み成功！準備OKだよ。");
+            }
+        };
+    </script>
     <style>
         body { font-family: sans-serif; padding: 20px; background: #222; color: white; }
         .card { background: #333; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #444; }
