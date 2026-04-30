@@ -4,16 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SIP Base Test</title>
-   <script src="https://unpkg.com/jssip@3.9.1/dist/jssip.min.js"></script>
-    <script>
-        window.onload = function() {
-            if (typeof JsSIP === 'undefined') {
-                alert("まだ部品が読み込めてないみたい。ネットに繋がってるかな？");
-            } else {
-                console.log("JsSIP読み込み成功！準備OKだよ。");
-            }
-        };
-    </script>
+    <!-- 読み込み先を一番安定しているものに変えたよ -->
+    <script src="https://unpkg.com/jssip@3.9.1/dist/jssip.min.js"></script>
+    
     <style>
         body { font-family: sans-serif; padding: 20px; background: #222; color: white; }
         .card { background: #333; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #444; }
@@ -52,9 +45,9 @@
     <audio id="remote-audio" autoplay></audio>
 
     <script>
-        // --- 裏側の設定データ ---
+        // --- 林さんの設定を最初から埋め込んだよ ---
         const SIP_DOMAIN = "sip.linphone.org";
-        const WS_URL = "wss://sip.linphone.org:4443"; // Linphoneの標準WebSocketポート(一般的には4443等)
+        const WS_URL = "wss://sip.linphone.org:4443";
         const PASSWORDS = {
             "mok2884": "linphonetech1242",
             "odoridomu": "linphonetech1242"
@@ -63,8 +56,14 @@
         let ua;
         let session;
 
-        // --- レジスター処理 ---
+        // --- ログイン処理 ---
         function doRegister() {
+            // ここで「JsSIPがあるか」をチェックするようにしたよ
+            if (typeof JsSIP === 'undefined') {
+                alert("エラー：まだプログラムの読み込みが終わってないみたい。もう一回読み込んでみて！");
+                return;
+            }
+
             const userId = document.getElementById('user-select').value;
             if (!userId) return alert("アカウントを選んでね！");
 
@@ -85,10 +84,10 @@
             });
 
             ua.on('registrationFailed', (e) => {
-                alert("ログイン失敗: " + e.cause);
+                alert("ログイン失敗。ネットの調子か設定かな？: " + e.cause);
             });
 
-            // 着信イベント
+            // 着信の待機
             ua.on('newRTCSession', (data) => {
                 session = data.session;
                 if (session.direction === 'incoming') {
@@ -102,7 +101,6 @@
             ua.start();
         }
 
-        // --- 発信処理 ---
         function doCall() {
             const target = document.getElementById('target-select').value;
             const options = {
@@ -112,7 +110,6 @@
             handleSessionEvents();
         }
 
-        // --- セッション管理 ---
         function handleSessionEvents() {
             document.getElementById('hangup-btn').disabled = false;
             document.getElementById('call-btn').disabled = true;
