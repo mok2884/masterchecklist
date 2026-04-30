@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PTT - Matrix Mode</title>
+    <title>PTT - Universal Matrix</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { 
             font-family: sans-serif; text-align: center; background: #000; color: #fff; 
             margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+            user-select: none; -webkit-user-select: none;
         }
         #setup-panel { 
             display: none; background: #222; padding: 20px; border-bottom: 2px solid #444;
             position: absolute; top: 0; width: 100%; z-index: 100; box-sizing: border-box;
         }
-        .secret-trigger { padding: 15px; font-size: 12px; color: #222; cursor: default; }
+        /* 設定を出すための隠しエリア */
+        .secret-trigger { padding: 15px; font-size: 12px; color: #111; cursor: pointer; }
         
         select { 
             padding: 15px; width: 100%; margin: 10px 0; border-radius: 8px; 
@@ -24,10 +26,12 @@
         #ptt-button { 
             flex-grow: 1; width: 100%; border: none;
             background: #111; color: #333; font-size: 40px; font-weight: bold;
-            touch-action: none; -webkit-user-select: none;
+            touch-action: none; cursor: pointer;
+            transition: background 0.05s;
         }
-        #ptt-button:active:not(:disabled) { background: #d32f2f; color: #fff; }
-        #ptt-button:disabled { background: #050505; color: #111; }
+        /* 押している時の色 */
+        #ptt-button.active { background: #d32f2f !important; color: #fff !important; }
+        #ptt-button:disabled { background: #050505; color: #111; cursor: not-allowed; }
 
         .info-bar { height: 50px; line-height: 50px; font-size: 16px; background: #111; border-top: 1px solid #333; }
         .active-status { color: #f1c40f; font-weight: bold; }
@@ -36,7 +40,7 @@
 </head>
 <body>
 
-<div class="secret-trigger" onclick="handleSecretClick()">ADMIN CONFIG</div>
+<div class="secret-trigger" onclick="handleSecretClick()">ADMIN CONFIG (5-TAP)</div>
 
 <div id="setup-panel">
     <div style="text-align:left; font-size:14px; color:#888;">【1. 自分の場所を登録】</div>
@@ -57,7 +61,7 @@
         <option value="std-b">スタジオB</option>
     </select>
     
-    <button onclick="closePanel()" style="margin-top:20px; padding:15px; width:100%; background:#444; color:#fff; border:none; border-radius:5px;">設定完了（閉じる）</button>
+    <button onclick="closePanel()" style="margin-top:20px; padding:15px; width:100%; background:#444; color:#fff; border:none; border-radius:5px; cursor:pointer;">設定完了</button>
 </div>
 
 <div class="info-bar" id="status-bar">役割を登録してください</div>
@@ -70,11 +74,12 @@
     let currentCall = null;
     let clickCount = 0;
 
+    // IDは林さんの指示通り、適当なカオス文字列にしています
     const idMap = {
-        'sat-a': 'lf-p-sat-a-v9x2u',
-        'sat-b': 'lf-p-sat-b-m4n5p',
-        'std-a': 'lf-p-std-a-r1t2y',
-        'std-b': 'lf-p-std-b-k8j9l'
+        'sat-a': 'lf-p-sat-a-v9x2u7k1w',
+        'sat-b': 'lf-p-sat-b-m4n5p8j3q',
+        'std-a': 'lf-p-std-a-r1t2y6v9b',
+        'std-b': 'lf-p-std-b-k8j9l0m4x'
     };
 
     function handleSecretClick() {
@@ -88,12 +93,11 @@
 
     function closePanel() { document.getElementById('setup-panel').style.display = 'none'; }
 
-    // ステップ1: 自分の登録
     function registerMe() {
         const val = document.getElementById('my-role').value;
         if (!val) return;
-
         if (peer) peer.destroy();
+
         peer = new Peer(idMap[val], {
             config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]}
         });
@@ -110,11 +114,9 @@
         });
     }
 
-    // ステップ2: 相手への接続
     async function connectToTarget() {
         const targetVal = document.getElementById('target-role').value;
         if (!targetVal || !peer) return;
-
         if (currentCall) currentCall.close();
 
         try {
@@ -137,21 +139,37 @@
             const ptt = document.getElementById('ptt-button');
             ptt.disabled = false;
             ptt.innerText = "PUSH TO TALK";
+            ptt.style.color = "#888";
+            ptt.style.background = "#1a1a1a";
         });
     }
 
+    // PTT制御（スマホ・PC両対応）
     const pttBtn = document.getElementById('ptt-button');
-    const toggleMic = (on) => {
+    const startTalk = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (localStream && !pttBtn.disabled) {
+            localStream.getAudioTracks()[0].enabled = true;
+            pttBtn.innerText = "TALKING...";
+            pttBtn.classList.add('active');
+        }
+    };
+    const stopTalk = () => {
         if (localStream) {
-            localStream.getAudioTracks()[0].enabled = on;
-            pttBtn.innerText = on ? "TALKING..." : "PUSH TO TALK";
+            localStream.getAudioTracks()[0].enabled = false;
+            pttBtn.innerText = "PUSH TO TALK";
+            pttBtn.classList.remove('active');
         }
     };
 
-    pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); toggleMic(true); });
-    pttBtn.addEventListener('touchend', () => toggleMic(false));
-    pttBtn.addEventListener('mousedown', () => toggleMic(true));
-    pttBtn.addEventListener('mouseup', () => toggleMic(false));
+    // スマホ用イベント
+    pttBtn.addEventListener('touchstart', startTalk);
+    pttBtn.addEventListener('touchend', stopTalk);
+    
+    // PC用イベント
+    pttBtn.addEventListener('mousedown', startTalk);
+    pttBtn.addEventListener('mouseup', stopTalk);
+    pttBtn.addEventListener('mouseleave', stopTalk); // ボタンの外にマウスが逃げた時用
 </script>
 </body>
 </html>
