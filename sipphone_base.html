@@ -2,27 +2,29 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>SIP電話 - 執念の再開</title>
-    <!-- 林さんがアップロードしたファイル名を、一文字も間違えずに指定します -->
-    <script src="./jssip.min.js"></script>
+    <title>SIP電話 - 公式版</title>
+    <!-- 林さんが見つけてくれた公式サイトのアドレス -->
+    <script src="https://jssip.net/download/releases/jssip-3.10.0.min.js"></script>
 </head>
 <body>
-    <div style="border: 2px solid #333; padding: 15px; background: #fff;">
-        <p>【更新メモ】2026/05/01 04:30 更新（ファイル名再確認）</p>
-        <p id="check">判定中...</p>
+    <div style="border: 2px solid #27ae60; padding: 15px; background: #fff;">
+        <p>【更新メモ】2026/05/01 07:30 更新（公式サイト直結版）</p>
+        <p id="check" style="font-size: 20px;">判定中...</p>
     </div>
 
     <script>
         window.onload = function() {
+            // サーバーの機嫌が直るのを祈りつつ、3秒待って判定
             setTimeout(function() {
                 if (typeof JsSIP !== 'undefined') {
-                    document.getElementById('check').innerText = '手順2：成功！林さんのファイルを捕まえましました！';
+                    document.getElementById('check').innerText = '手順2：成功！！！ついに本物が降臨しました！';
                     document.getElementById('check').style.color = 'green';
+                    document.getElementById('check').style.fontWeight = 'bold';
                 } else {
-                    document.getElementById('check').innerText = 'まだ失敗。ファイル名が「jssip.min.js」で合っているか見て！';
+                    document.getElementById('check').innerText = 'まだ失敗。サーバーの500エラーが長引いているかも…';
                     document.getElementById('check').style.color = 'red';
                 }
-            }, 500);
+            }, 3000);
         };
     </script>
 </body>
