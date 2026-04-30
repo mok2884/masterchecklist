@@ -2,17 +2,22 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>SIP電話テスト</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jssip/3.9.1/jssip.min.js"></script>
 </head>
 <body>
-    <p id="status">確認中...</p>
+    <div style="border: 1px solid #000; padding: 10px;">
+        <p>【更新メモ】2026/05/01 00:35 更新分</p>
+        <p id="check">手順1：確認中...</p>
+    </div>
+
     <script>
         window.onload = function() {
             if (typeof JsSIP !== 'undefined') {
-                document.getElementById('status').innerText = '1：部品の読み込みに成功しました！';
+                document.getElementById('check').innerText = '手順1：成功！部品が届きました。';
+                document.getElementById('check').style.color = 'green';
             } else {
-                document.getElementById('status').innerText = '1：失敗。まだ部品が読み込めていません。';
+                document.getElementById('check').innerText = '手順1：まだ失敗しています。';
+                document.getElementById('check').style.color = 'red';
             }
         };
     </script>
