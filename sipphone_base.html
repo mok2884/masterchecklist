@@ -2,127 +2,42 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIP Base Test (Fully Embedded)</title>
+    <title>SIP電話 - 再始動</title>
+    <!-- 林さんの作った部品を読み込むよ -->
+    <script src="jssip.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #222; color: white; }
-        .card { background: #333; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #444; }
-        select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; font-size: 1rem; }
-        button { width: 100%; padding: 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
-        .btn-reg { background: #28a745; color: white; }
-        .btn-call { background: #007bff; color: white; margin-top: 10px; }
-        .btn-hangup { background: #dc3545; color: white; margin-top: 10px; }
-        #status { font-size: 1.2rem; font-weight: bold; color: #ffc107; text-align: center; display: block; margin: 10px 0; }
-        .online { color: #28a745 !important; }
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        .success { color: #2ecc71; font-weight: bold; }
+        .error { color: #e74c3c; font-weight: bold; }
+        .box { border: 1px solid #ccc; padding: 15px; border-radius: 8px; background: #f9f9f9; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h3>1. 自分のアカウントを選択</h3>
-        <select id="user-select">
-            <option value="">-- 選択してください --</option>
-            <option value="mok2884">mok2884</option>
-            <option value="odoridomu">odoridomu</option>
-        </select>
-        <button class="btn-reg" onclick="doRegister()">ログイン (Register)</button>
-        <span id="status">OFFLINE</span>
+    <div class="box">
+        <h1>SIP電話システム</h1>
+        <p>現在の状態: <span id="status">確認中...</span></p>
     </div>
 
-    <div id="call-section" class="card" style="display:none;">
-        <h3>2. 相手を呼び出す</h3>
-        <select id="target-select">
-            <option value="sip:odoridomu@sip.linphone.org">odoridomu へ発信</option>
-            <option value="sip:mok2884@sip.linphone.org">mok2884 へ発信</option>
-        </select>
-        <button class="btn-call" id="call-btn" onclick="doCall()">発信 (INVITE)</button>
-        <button class="btn-hangup" id="hangup-btn" onclick="doHangup()" disabled>終了 (BYE)</button>
-    </div>
-
-    <audio id="remote-audio" autoplay></audio>
-
-    <!-- ここにJsSIPのプログラム本体を直接書き込むよ -->
     <script>
-    /**
-     * JsSIP v3.9.1
-     */
-    !function(t,e){"object"==typeof exports&&"object"==typeof module?module.exports=e():"function"==typeof define&&define.amd?define([],e):"object"==typeof exports?exports.JsSIP=e():t.JsSIP=e()}(window,(function(){return function(t){var e={};function i(s){if(e[s])return e[s].exports;var n=e[s]={i:s,l:!1,exports:{}};return t[s].call(n.exports,n,n.exports,i),n.l=!0,n.exports}return i.m=t,i.c=e,i.d=function(t,e,s){i.o(t,e)||Object.defineProperty(t,e,{enumerable:!unique,get:s})},i.r=function(t){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(t,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(t,"__esModule",{value:!0})},i.t=function(t,e){if(1&e&&(t=i(t)),8&e)return t;if(4&e&&"object"==typeof t&&t&&t.__esModule)return t;var s=Object.create(null);if(i.r(s),Object.defineProperty(s,"default",{enumerable:!0,value:t}),2&e&&"string"!=typeof t)for(var n in t)i.d(s,n,function(e){return t[e]}.bind(null,n));return s},i.n=function(t){var e=t&&t.__esModule?function(){return t.default}:function(){return t};return i.d(e,"a",e),e},i.o=function(t,e){return Object.prototype.hasOwnProperty.call(t,e)},i.p="",i(i.s=51)}([function(t,e,i){"use strict";(function(e){var s=i(14),n=i(15),r=i(16);function o(t){var i=this;if(!(i instanceof o))return new o(t);i.label=t,i.enabled=!0}o.prototype.log=function(){if(this.enabled){var t=Array.prototype.slice.call(arguments);t.unshift(this.label),console.log.apply(console,t)}},t.exports=o}).call(this,i(4))},
-    /* ... 便宜上、ここでは要約していますが、本来はここに数千行のライブラリコードが入ります ... */
-    /* 実際の運用では CDN 経由が一般的ですが、環境エラー回避のため、以下に林さんのロジックを続けます */
-    ]);
-    </script>
-    
-    <!-- 予備の読み込み（上記が万が一エラーになったとき用） -->
-    <script src="https://unpkg.com/jssip@3.9.1/dist/jssip.min.js"></script>
-
-    <script>
-        // --- 林さんの設定 ---
-        const SIP_DOMAIN = "sip.linphone.org";
-        const WS_URL = "wss://sip.linphone.org:4443";
-        const PASSWORDS = {
-            "mok2884": "linphonetech1242",
-            "odoridomu": "linphonetech1242"
-        };
-
-        let ua;
-        let session;
-
-        function doRegister() {
-            if (typeof JsSIP === 'undefined') {
-                alert("JsSIPが見つかりません。ネット接続を確認してください。");
-                return;
-            }
-
-            const userId = document.getElementById('user-select').value;
-            if (!userId) return alert("名前を選んでね");
-
-            const socket = new JsSIP.WebSocketInterface(WS_URL);
-            ua = new JsSIP.UA({
-                sockets: [socket],
-                uri: `sip:${userId}@${SIP_DOMAIN}`,
-                password: PASSWORDS[userId]
-            });
-
-            ua.on('registered', () => {
-                document.getElementById('status').innerText = "ONLINE";
-                document.getElementById('status').className = "online";
-                document.getElementById('call-section').style.display = 'block';
-            });
-
-            ua.on('registrationFailed', (e) => {
-                alert("ログイン失敗: " + e.cause);
-            });
-
-            ua.on('newRTCSession', (data) => {
-                session = data.session;
-                if (session.direction === 'incoming') {
-                    if (confirm("着信！出ますか？")) {
-                        session.answer({ mediaConstraints: { audio: true, video: false } });
-                        handleEvents();
-                    }
+        window.onload = function() {
+            var statusElement = document.getElementById('status');
+            
+            try {
+                // 部品がちゃんと動いているかチェック！
+                if (typeof JsSIP !== 'undefined') {
+                    statusElement.innerText = '成功！部品（JsSIP）が正しく読み込まれました。';
+                    statusElement.className = 'success';
+                } else {
+                    statusElement.innerText = '失敗。jssip.min.js が見つかりません。';
+                    statusElement.className = 'error';
                 }
-            });
-
-            ua.start();
-        }
-
-        function doCall() {
-            const target = document.getElementById('target-select').value;
-            session = ua.call(target, { mediaConstraints: { audio: true, video: false } });
-            handleEvents();
-        }
-
-        function handleEvents() {
-            document.getElementById('hangup-btn').disabled = false;
-            session.on('peerconnection', (data) => {
-                data.peerconnection.addEventListener('track', (e) => {
-                    document.getElementById('remote-audio').srcObject = e.streams[0];
-                });
-            });
-            session.on('ended', () => { document.getElementById('hangup-btn').disabled = true; });
-        }
-
-        function doHangup() { if (session) session.terminate(); }
+            } catch (e) {
+                statusElement.innerText = 'エラーが発生しました：' + e;
+                statusElement.className = 'error';
+            }
+        };
     </script>
+
 </body>
 </html>
