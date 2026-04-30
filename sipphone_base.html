@@ -2,42 +2,19 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>SIP電話 - 再始動</title>
-    <!-- 林さんの作った部品を読み込むよ -->
-    <script src="jssip.min.js"></script>
-    <style>
-        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
-        .success { color: #2ecc71; font-weight: bold; }
-        .error { color: #e74c3c; font-weight: bold; }
-        .box { border: 1px solid #ccc; padding: 15px; border-radius: 8px; background: #f9f9f9; }
-    </style>
+    <title>SIP電話テスト</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jssip/3.9.1/jssip.min.js"></script>
 </head>
 <body>
-
-    <div class="box">
-        <h1>SIP電話システム</h1>
-        <p>現在の状態: <span id="status">確認中...</span></p>
-    </div>
-
+    <p id="status">確認中...</p>
     <script>
         window.onload = function() {
-            var statusElement = document.getElementById('status');
-            
-            try {
-                // 部品がちゃんと動いているかチェック！
-                if (typeof JsSIP !== 'undefined') {
-                    statusElement.innerText = '成功！部品（JsSIP）が正しく読み込まれました。';
-                    statusElement.className = 'success';
-                } else {
-                    statusElement.innerText = '失敗。jssip.min.js が見つかりません。';
-                    statusElement.className = 'error';
-                }
-            } catch (e) {
-                statusElement.innerText = 'エラーが発生しました：' + e;
-                statusElement.className = 'error';
+            if (typeof JsSIP !== 'undefined') {
+                document.getElementById('status').innerText = '1：部品の読み込みに成功しました！';
+            } else {
+                document.getElementById('status').innerText = '1：失敗。まだ部品が読み込めていません。';
             }
         };
     </script>
-
 </body>
 </html>
