@@ -2,23 +2,27 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jssip/3.9.1/jssip.min.js"></script>
+    <!-- ./ をつけることで、同じ場所にあるファイルを強制的に指定するよ -->
+    <script src="./jssip.min.js"></script>
 </head>
 <body>
     <div style="border: 1px solid #000; padding: 10px;">
-        <p>【更新メモ】2026/05/01 00:35 更新分</p>
+        <p>【更新メモ】2026/05/01 01:00 更新分</p>
         <p id="check">手順1：確認中...</p>
     </div>
 
     <script>
         window.onload = function() {
-            if (typeof JsSIP !== 'undefined') {
-                document.getElementById('check').innerText = '手順1：成功！部品が届きました。';
-                document.getElementById('check').style.color = 'green';
-            } else {
-                document.getElementById('check').innerText = '手順1：まだ失敗しています。';
-                document.getElementById('check').style.color = 'red';
-            }
+            // 少しだけ待ってからチェックするね
+            setTimeout(function() {
+                if (typeof JsSIP !== 'undefined') {
+                    document.getElementById('check').innerText = '手順1：成功！同じ場所の部品を認識しました！';
+                    document.getElementById('check').style.color = 'green';
+                } else {
+                    document.getElementById('check').innerText = '手順1：まだ失敗。GitHubが部品を隠してるみたい…';
+                    document.getElementById('check').style.color = 'red';
+                }
+            }, 500);
         };
     </script>
 </body>
