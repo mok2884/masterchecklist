@@ -3,173 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PTT - Universal Matrix</title>
+    <!-- PWA用の全画面設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>PTT MATRIX PROFESSIONAL</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { 
-            font-family: sans-serif; text-align: center; background: #000; color: #fff; 
+            font-family: 'Courier New', monospace; text-align: center; background: #000; color: #fff; 
             margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column;
             user-select: none; -webkit-user-select: none;
         }
+
+        /* 5連打で開く設定パネル（最前面） */
         #setup-panel { 
-            display: none; background: #222; padding: 20px; border-bottom: 2px solid #444;
-            position: absolute; top: 0; width: 100%; z-index: 100; box-sizing: border-box;
+            display: none; background: rgba(20, 20, 20, 0.95); padding: 20px; 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; box-sizing: border-box;
         }
-        /* 設定を出すための隠しエリア */
-        .secret-trigger { padding: 15px; font-size: 12px; color: #111; cursor: pointer; }
+
+        /* 画面構成：上部・中央・下部の3段 */
+        .dead-zone { height: 20vh; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #222; }
         
-        select { 
-            padding: 15px; width: 100%; margin: 10px 0; border-radius: 8px; 
-            background: #333; color: #fff; font-size: 18px; border: 1px solid #555;
+        /* 中央：PTT帯 */
+        #ptt-area { 
+            height: 60vh; width: 100%;
+            border-top: 1px solid #1a1a1a; border-bottom: 1px solid #1a1a1a;
+            display: flex; align-items: center; justify-content: center;
+            background: #050505; color: #1a1a1a; font-size: 32px; font-weight: bold;
+            transition: all 0.1s; cursor: pointer;
+        }
+        #ptt-area.active { background: #400; color: #f00; border-color: #f00; }
+        #ptt-area.locked { background: #600; color: #fff; border-color: #fff; box-shadow: inset 0 0 20px #f00; }
+
+        /* TX HOLD ボタン（下部のデッドゾーン内に配置） */
+        #lock-trigger { 
+            width: 150px; height: 40px; border: 1px solid #111; border-radius: 4px;
+            color: #111; line-height: 40px; font-size: 12px;
         }
 
-        #ptt-button { 
-            flex-grow: 1; width: 100%; border: none;
-            background: #111; color: #333; font-size: 40px; font-weight: bold;
-            touch-action: none; cursor: pointer;
-            transition: background 0.05s;
-        }
-        /* 押している時の色 */
-        #ptt-button.active { background: #d32f2f !important; color: #fff !important; }
-        #ptt-button:disabled { background: #050505; color: #111; cursor: not-allowed; }
-
-        .info-bar { height: 50px; line-height: 50px; font-size: 16px; background: #111; border-top: 1px solid #333; }
-        .active-status { color: #f1c40f; font-weight: bold; }
-        .conn-status { color: #00ff00; font-weight: bold; }
+        .info-bar { position: absolute; top: 20px; width: 100%; font-size: 12px; color: #444; pointer-events: none; }
     </style>
 </head>
 <body>
 
-<div class="secret-trigger" onclick="handleSecretClick()">ADMIN CONFIG (5-TAP)</div>
+<div class="info-bar" id="status-display">INITIALIZING...</div>
 
-<div id="setup-panel">
-    <div style="text-align:left; font-size:14px; color:#888;">【1. 自分の場所を登録】</div>
-    <select id="my-role" onchange="registerMe()">
-        <option value="">-- 自分を選択 --</option>
-        <option value="sat-a">出先A</option>
-        <option value="sat-b">出先B</option>
-        <option value="std-a">スタジオA</option>
-        <option value="std-b">スタジオB</option>
-    </select>
-    
-    <div style="text-align:left; font-size:14px; color:#888; margin-top:15px;">【2. 接続先を選択】</div>
-    <select id="target-role" onchange="connectToTarget()">
-        <option value="">-- 相手を選択 --</option>
-        <option value="sat-a">出先A</option>
-        <option value="sat-b">出先B</option>
-        <option value="std-a">スタジオA</option>
-        <option value="std-b">スタジオB</option>
-    </select>
-    
-    <button onclick="closePanel()" style="margin-top:20px; padding:15px; width:100%; background:#444; color:#fff; border:none; border-radius:5px; cursor:pointer;">設定完了</button>
+<!-- 上部：5連打で設定を開く -->
+<div class="dead-zone" id="config-trigger">ADMIN CONFIG</div>
+
+<!-- 中央：PTT帯 -->
+<div id="ptt-area">PUSH TO TALK</div>
+
+<!-- 下部：5連打で常時ONロック -->
+<div class="dead-zone">
+    <div id="lock-trigger">TX HOLD (5-TAP)</div>
 </div>
 
-<div class="info-bar" id="status-bar">役割を登録してください</div>
-
-<button id="ptt-button" disabled>WAITING...</button>
+<div id="setup-panel">
+    <h3>SYSTEM CONFIG</h3>
+    <p style="font-size:12px;">【自分の役割】</p>
+    <select id="my-role" onchange="handleRegister()">
+        <option value="">-- SELECT --</option>
+        <option value="sat-a">SAT-A (出先A)</option>
+        <option value="sat-b">SAT-B (出先B)</option>
+        <option value="std-a">STD-A (スタジオA)</option>
+        <option value="std-b">STD-B (スタジオB)</option>
+    </select>
+    <p style="font-size:12px; margin-top:20px;">【接続先】</p>
+    <select id="target-role" onchange="handleConnect()">
+        <option value="">-- SELECT --</option>
+        <option value="sat-a">SAT-A</option>
+        <option value="sat-b">SAT-B</option>
+        <option value="std-a">STD-A</option>
+        <option value="std-b">STD-B</option>
+    </select>
+    <br><br>
+    <button onclick="closePanel()" style="padding:15px; width:80%; background:#333; color:#fff; border:none;">CLOSE</button>
+</div>
 
 <script>
     let peer = null;
     let localStream = null;
-    let currentCall = null;
-    let clickCount = 0;
+    let isLocked = false;
+    let clickCounts = { config: 0, lock: 0 };
 
-    // IDは林さんの指示通り、適当なカオス文字列にしています
+    // カオスID
     const idMap = {
-        'sat-a': 'lf-p-sat-a-v9x2u7k1w',
-        'sat-b': 'lf-p-sat-b-m4n5p8j3q',
-        'std-a': 'lf-p-std-a-r1t2y6v9b',
-        'std-b': 'lf-p-std-b-k8j9l0m4x'
+        'sat-a': 'lf-p-sa-v9x2u7k1w', 'sat-b': 'lf-p-sb-m4n5p8j3q',
+        'std-a': 'lf-p-sa-r1t2y6v9b', 'std-b': 'lf-p-sb-k8j9l0m4x'
     };
 
-    function handleSecretClick() {
-        clickCount++;
-        if (clickCount >= 5) {
-            document.getElementById('setup-panel').style.display = 'block';
-            clickCount = 0;
+    // 5連打カウンター（汎用）
+    function multiTap(key, callback) {
+        clickCounts[key]++;
+        if (clickCounts[key] >= 5) {
+            callback();
+            clickCounts[key] = 0;
         }
-        setTimeout(() => { clickCount = 0; }, 2000);
+        setTimeout(() => { clickCounts[key] = 0; }, 2000);
     }
+
+    // 各種トリガー
+    document.getElementById('config-trigger').onclick = () => multiTap('config', () => {
+        document.getElementById('setup-panel').style.display = 'block';
+    });
+
+    document.getElementById('lock-trigger').onclick = () => multiTap('lock', toggleLock);
 
     function closePanel() { document.getElementById('setup-panel').style.display = 'none'; }
 
-    function registerMe() {
-        const val = document.getElementById('my-role').value;
-        if (!val) return;
-        if (peer) peer.destroy();
+    // --- ここから下に実際の通信ロジックを実装していく ---
+    // (registerMe, connectToTargetなどは前回のロジックを流用)
 
-        peer = new Peer(idMap[val], {
-            config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]}
-        });
-
-        peer.on('open', () => {
-            document.getElementById('status-bar').innerHTML = `自分: <span class="active-status">${val.toUpperCase()}</span> (待機中)`;
-        });
-
-        peer.on('call', async call => {
-            localStream = await navigator.mediaDevices.getUserMedia({audio: true});
-            localStream.getAudioTracks()[0].enabled = false;
-            call.answer(localStream);
-            setupCall(call);
-        });
-    }
-
-    async function connectToTarget() {
-        const targetVal = document.getElementById('target-role').value;
-        if (!targetVal || !peer) return;
-        if (currentCall) currentCall.close();
-
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({audio: true});
-            localStream.getAudioTracks()[0].enabled = false;
-            const call = peer.call(idMap[targetVal], localStream);
-            setupCall(call);
-        } catch (e) {
-            console.error(e);
-        }
-    }
-
-    function setupCall(call) {
-        currentCall = call;
-        call.on('stream', stream => {
-            const audio = new Audio();
-            audio.srcObject = stream;
-            audio.play();
-            document.getElementById('status-bar').innerHTML = `<span class="conn-status">CONNECTED</span>`;
-            const ptt = document.getElementById('ptt-button');
-            ptt.disabled = false;
+    function toggleLock() {
+        if (!peer) return;
+        isLocked = !isLocked;
+        const ptt = document.getElementById('ptt-area');
+        const trigger = document.getElementById('lock-trigger');
+        
+        if (isLocked) {
+            ptt.classList.add('locked');
+            ptt.innerText = "TX HOLDING";
+            trigger.style.color = "#f00";
+            trigger.style.borderColor = "#f00";
+            if(localStream) localStream.getAudioTracks()[0].enabled = true;
+        } else {
+            ptt.classList.remove('locked');
             ptt.innerText = "PUSH TO TALK";
-            ptt.style.color = "#888";
-            ptt.style.background = "#1a1a1a";
-        });
+            trigger.style.color = "#111";
+            trigger.style.borderColor = "#111";
+            if(localStream) localStream.getAudioTracks()[0].enabled = false;
+        }
     }
 
-    // PTT制御（スマホ・PC両対応）
-    const pttBtn = document.getElementById('ptt-button');
+    // PTT操作 (マウス・タッチ両対応)
+    const pttArea = document.getElementById('ptt-area');
     const startTalk = (e) => {
-        if (e.cancelable) e.preventDefault();
-        if (localStream && !pttBtn.disabled) {
-            localStream.getAudioTracks()[0].enabled = true;
-            pttBtn.innerText = "TALKING...";
-            pttBtn.classList.add('active');
-        }
+        if (isLocked || !localStream) return;
+        e.preventDefault();
+        localStream.getAudioTracks()[0].enabled = true;
+        pttArea.classList.add('active');
+        pttArea.innerText = "TALKING...";
     };
     const stopTalk = () => {
-        if (localStream) {
-            localStream.getAudioTracks()[0].enabled = false;
-            pttBtn.innerText = "PUSH TO TALK";
-            pttBtn.classList.remove('active');
-        }
+        if (isLocked || !localStream) return;
+        localStream.getAudioTracks()[0].enabled = false;
+        pttArea.classList.remove('active');
+        pttArea.innerText = "PUSH TO TALK";
     };
 
-    // スマホ用イベント
-    pttBtn.addEventListener('touchstart', startTalk);
-    pttBtn.addEventListener('touchend', stopTalk);
-    
-    // PC用イベント
-    pttBtn.addEventListener('mousedown', startTalk);
-    pttBtn.addEventListener('mouseup', stopTalk);
-    pttBtn.addEventListener('mouseleave', stopTalk); // ボタンの外にマウスが逃げた時用
+    pttArea.onmousedown = startTalk;
+    pttArea.onmouseup = stopTalk;
+    pttArea.ontouchstart = startTalk;
+    pttArea.ontouchend = stopTalk;
 </script>
 </body>
 </html>
