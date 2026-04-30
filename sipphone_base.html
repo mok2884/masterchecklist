@@ -39,39 +39,32 @@
     var ua;
 
     window.onload = function() {
-        // 林さんの設定をここに完璧に埋め込みました
-        var socket = new JsSIP.WebSocketInterface('wss://sip.linphone.org:5060'); // Linphoneの標準WSSポート
+        // Linphoneの「Web専用・鍵付き窓口」は 443 なんです！
+        var socket = new JsSIP.WebSocketInterface('wss://sip.linphone.org:443'); 
+        
         var configuration = {
             sockets: [socket],
             uri: 'sip:mok2884@sip.linphone.org',
             password: 'linphonetech1242'
         };
 
-        try {
-            ua = new JsSIP.UA(configuration);
+        ua = new JsSIP.UA(configuration);
 
-            ua.on('connected', function() {
-                document.getElementById('status').innerText = '✅ サーバー接続完了';
-                document.getElementById('status').className = 'status online';
-            });
+        ua.on('connected', function() {
+            document.getElementById('status').innerText = '✅ 接続完了！林さん、やったよ！';
+            document.getElementById('status').className = 'status online';
+        });
 
-            ua.on('registrationFailed', function(e) {
-                document.getElementById('status').innerText = '❌ 接続失敗: ' + e.cause;
-                document.getElementById('status').className = 'status offline';
-            });
+        ua.on('registrationFailed', function(e) {
+            document.getElementById('status').innerText = '❌ 失敗: ' + e.cause;
+            // ここでエラーが出たら、まだポートが違う証拠。ゆい、もっと調べます。
+        });
 
-            ua.start();
-        } catch (e) {
-            document.getElementById('status').innerText = 'エラー発生';
-            console.error(e);
-        }
+        ua.start();
     };
 
     function makeCall() {
         var dest = document.getElementById('dest').value;
-        if (!dest) { alert("相手のIDを入れてね！"); return; }
-        
-        // linphone.org宛に発信する設定
         ua.call('sip:' + dest + '@sip.linphone.org', {
             mediaConstraints: { audio: true, video: false }
         });
