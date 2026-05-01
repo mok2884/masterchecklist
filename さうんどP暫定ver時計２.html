@@ -353,6 +353,36 @@
         updateRealTime();
         setMode('CALC');
 
+        // --- ここから「鉄壁スリープ防止」---
+        let wakeLock = null;
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {}
+        };
+
+        // 画面を触った瞬間にスリープ禁止を起動
+        document.body.addEventListener('touchstart', () => { 
+            if (!wakeLock) requestWakeLock(); 
+        }, { passive: true });
+        
+        document.body.addEventListener('mousedown', () => { 
+            if (!wakeLock) requestWakeLock(); 
+        });
+
+        // アプリに戻ってきた時に再度ロック
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
+        });
+
+        // 30秒ごとに目に見えない振動をさせてスリープ判定を回避
+        setInterval(() => {
+            document.body.style.transform = (document.body.style.transform === 'translate3d(0, 0.01px, 0)') ? 'translate3d(0, 0, 0)' : 'translate3d(0, 0.01px, 0)';
+        }, 30000);
+        // --- ここまで ---
+
         document.body.addEventListener('touchmove', function(e) {
             if (e.target === document.body || e.target.closest('.console') === null) {
                 e.preventDefault();
@@ -365,3 +395,4 @@
     </script>
 </body>
 </html>
+       
