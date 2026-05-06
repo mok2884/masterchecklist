@@ -36,8 +36,9 @@
         .tap-notice { font-size: 13px; color: #fff; background: #c0392b; padding: 3px 10px; border-radius: 4px; margin: 6px 0; font-weight: bold; }
         #status-display { font-size: 11px; color: #00ff00; background: #000; padding: 2px 0; height: 16px; overflow: hidden; }
         
-        /* 役割表示ラベル */
-        #role-label { font-size: 18px; color: #f1c40f; margin-bottom: 15px; font-weight: bold; }
+        /* 役割表示とボタンの文字サイズ微調整 */
+        #role-label { font-size: 20px; color: #f1c40f; margin-bottom: 10px; font-weight: bold; }
+        .current-role-display { font-size: 14px; color: #aaa; margin-bottom: 5px; }
 
         #keep-awake-video { position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; }
     </style>
@@ -53,9 +54,10 @@
 <div class="header-panel">
     <div class="top-controls">
         <div class="clock-box" id="clock">00:00:00</div>
-        <div class="config-box" onclick="tapAction('config')">
-            <div class="tap-notice">5回タップ</div>
-            <button class="safety-btn">回線設定</button>
+        <div class="config-box" onclick="tapAction('refresh')">
+            <div class="current-role-display" id="role-name-top">-</div>
+            <div class="tap-notice">3回タップ</div>
+            <button class="safety-btn">回線復旧</button>
         </div>
     </div>
 </div>
@@ -66,28 +68,12 @@
 </div>
 
 <div class="footer-panel">
-    <div class="tap-notice">5回タップで切替</div>
+    <div class="tap-notice">3回タップで切替</div>
     <button class="safety-btn" id="lock-btn" onclick="tapAction('lock')">マイク常時ON（固定）</button>
 </div>
 
-<!-- 設定パネル（URL指定がない場合の予備） -->
-<div id="setup-panel" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:1000; padding:20px; box-sizing:border-box;">
-    <h2 style="color:#f1c40f;">接続設定</h2>
-    <select id="my-role" onchange="registerMe()" style="width:100%; padding:15px; margin-bottom:20px; font-size:18px;">
-        <option value="">-- 自分を選択 --</option>
-        <option value="sat-a">出先 A</option><option value="sat-b">出先 B</option>
-        <option value="std-a">スタジオ A</option><option value="std-b">スタジオ B</option>
-    </select>
-    <select id="target-role" onchange="connectToTarget()" style="width:100%; padding:15px; margin-bottom:20px; font-size:18px;">
-        <option value="">-- 相手を選択 --</option>
-        <option value="sat-a">出先 A</option><option value="sat-b">出先 B</option>
-        <option value="std-a">スタジオ A</option><option value="std-b">スタジオ B</option>
-    </select>
-    <button onclick="closePanel()" style="width:100%; padding:20px; background:#27ae60; color:#fff; border:none; border-radius:8px; font-size:18px;">設定を閉じる</button>
-</div>
-
 <script>
-    let peer = null, localStream = null, isLocked = false, counters = { config: 0, lock: 0 }, wakeLock = null;
+    let peer = null, localStream = null, isLocked = false, counters = { refresh: 0, lock: 0 }, wakeLock = null;
     let audioCtx = null, noiseGain = null;
 
     const idMap = { 'sat-a': 'lf-p-sa-v9x2u7k1w', 'sat-b': 'lf-p-sb-m4n5p8j3q', 'std-a': 'lf-p-sa-r1t2y6v9b', 'std-b': 'lf-p-sb-k8j9l0m4x' };
@@ -129,19 +115,19 @@
         requestWakeLock();
         startVideoKeepAwake();
         counters[type]++;
-        if (counters[type] >= 5) {
-            if (type === 'config') document.getElementById('setup-panel').style.display = 'block';
+        if (counters[type] >= 3) {
+            if (type === 'refresh') location.reload();
             if (type === 'lock') toggleLock();
             counters[type] = 0;
         }
         setTimeout(() => { counters[type] = 0; }, 1200);
     }
 
-    function registerMe(manualValue = null) {
-        const val = manualValue || document.getElementById('my-role').value;
-        if (!val) return;
+    function registerMe(val) {
+        if (!val || !idMap[val]) return;
         
         document.getElementById('role-label').innerText = `【 ${roleNames[val]} 】`;
+        document.getElementById('role-name-top').innerText = roleNames[val];
         document.getElementById('status-display').innerText = `待機中: ${roleNames[val]}`;
         
         initNoise();
@@ -151,7 +137,7 @@
         peer = new Peer(idMap[val], { config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]}});
         
         peer.on('open', () => { 
-            if (urlRole && val.startsWith('sat')) {
+            if (val.startsWith('sat')) {
                 const target = val.replace('sat', 'std');
                 setTimeout(() => connectToTarget(target), 2000);
             }
@@ -167,15 +153,14 @@
         });
     }
 
-    async function connectToTarget(manualTarget = null) {
-        const target = manualTarget || document.getElementById('target-role').value;
+    async function connectToTarget(target) {
         if (!target || !peer) return;
-        
         if (!localStream) {
-            localStream = await navigator.mediaDevices.getUserMedia({audio: true});
-            localStream.getAudioTracks()[0].enabled = false;
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({audio: true});
+                localStream.getAudioTracks()[0].enabled = false;
+            } catch(e) { console.log(e); }
         }
-        
         document.getElementById('status-display').innerText = `${roleNames[target]} を呼出中...`;
         const call = peer.call(idMap[target], localStream);
         handleCall(call);
@@ -190,8 +175,7 @@
     }
 
     function setSideTone(active) {
-        const role = urlRole || document.getElementById('my-role').value;
-        if (role && role.startsWith('sat') && noiseGain) {
+        if (urlRole && urlRole.startsWith('sat') && noiseGain) {
             noiseGain.gain.setTargetAtTime(active ? 0.015 : 0, audioCtx.currentTime, 0.05);
         }
     }
@@ -233,11 +217,12 @@
 
     pttArea.onmousedown = startTalk; pttArea.onmouseup = stopTalk;
     pttArea.ontouchstart = startTalk; pttArea.ontouchend = stopTalk;
-    function closePanel() { document.getElementById('setup-panel').style.display = 'none'; }
 
     window.onload = () => {
-        if (urlRole && idMap[urlRole]) {
+        if (urlRole) {
             registerMe(urlRole);
+        } else {
+            document.getElementById('status-display').innerText = "エラー: URLパラメータが必要です";
         }
     };
 </script>
