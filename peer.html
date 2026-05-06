@@ -13,6 +13,18 @@
             background: #1a1c1e; color: #fff; margin: 0; height: 100vh; overflow: hidden; 
             display: flex; flex-direction: column; user-select: none;
         }
+        /* ステータスとSIGランプのエリア */
+        #status-container { 
+            background: #000; height: 24px; display: flex; align-items: center; justify-content: center; 
+            font-size: 11px; border-bottom: 1px solid #333;
+        }
+        #status-display { color: #00ff00; margin-right: 10px; }
+        .sig-lamp { 
+            width: 12px; height: 12px; border-radius: 50%; background: #333; 
+            box-shadow: inset 0 0 4px #000; transition: background 0.1s;
+        }
+        .sig-lamp.active { background: #00ff00; box-shadow: 0 0 10px #00ff00; }
+
         .header-panel { height: 22vh; background: #2c2e31; display: flex; flex-direction: column; }
         .top-controls { flex-grow: 1; display: flex; width: 100%; }
         .clock-box { 
@@ -20,7 +32,11 @@
             font-family: 'Roboto Mono', monospace; font-size: 50px; color: #f1c40f;
             background: #111; border-right: 1px solid #444;
         }
-        .config-box { width: 34%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .config-box { 
+            width: 34%; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            text-decoration: none; color: inherit; /* リンク用 */
+        }
+
         #ptt-area { 
             height: 56vh; width: 100%; background: #3a3f44;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -30,11 +46,11 @@
         }
         #ptt-area.active { background: #e74c3c; color: #fff; }
         #ptt-area.locked { background: #d35400; color: #fff; }
+
         .footer-panel { height: 22vh; background: #2c2e31; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .safety-btn { padding: 12px; width: 85%; background: #4a4f55; border: 2px solid #666; border-radius: 8px; color: #fff; font-size: 16px; font-weight: bold; }
         .safety-btn.active-lock { background: #d35400; border-color: #f39c12; }
         .tap-notice { font-size: 13px; color: #fff; background: #c0392b; padding: 3px 10px; border-radius: 4px; margin: 6px 0; font-weight: bold; }
-        #status-display { font-size: 11px; color: #00ff00; background: #000; padding: 2px 0; height: 16px; overflow: hidden; }
         #role-label { font-size: 20px; color: #f1c40f; margin-bottom: 10px; font-weight: bold; }
         .current-role-display { font-size: 14px; color: #aaa; margin-bottom: 5px; }
         #keep-awake-video { position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; }
@@ -42,7 +58,11 @@
 </head>
 <body onclick="forceActivateAudio()">
 
-<div id="status-display">待機中</div>
+<div id="status-container">
+    <div id="status-display">待機中</div>
+    <div style="margin-right:5px;">SIG:</div>
+    <div id="sig-lamp" class="sig-lamp"></div>
+</div>
 
 <video id="keep-awake-video" playsinline muted loop>
   <source src="https://raw.githubusercontent.com/anars/blank-audio/master/250-milliseconds-of-silence.mp4" type="video/mp4">
@@ -51,11 +71,12 @@
 <div class="header-panel">
     <div class="top-controls">
         <div class="clock-box" id="clock">00:00:00</div>
-        <div class="config-box" onclick="tapAction('refresh')">
+        <!-- プログラムリロードではなく、リンクとして踏ませる -->
+        <a href="#" id="refresh-link" class="config-box" onclick="tapAction('refresh', event)">
             <div class="current-role-display" id="role-name-top">-</div>
             <div class="tap-notice">3回タップ</div>
-            <button class="safety-btn">回線復旧</button>
-        </div>
+            <button class="safety-btn" style="pointer-events:none;">回線復旧</button>
+        </a>
     </div>
 </div>
 
@@ -72,6 +93,7 @@
 <script>
     let peer = null, localStream = null, isLocked = false, counters = { refresh: 0, lock: 0 };
     let audioCtx = null, noiseGain = null;
+    let remoteAnalyser = null, dataArray = null; // SIGランプ用
 
     const idMap = { 'sat-a': 'lf-p-sa-v9x2u7k1w', 'sat-b': 'lf-p-sb-m4n5p8j3q', 'std-a': 'lf-p-sa-r1t2y6v9b', 'std-b': 'lf-p-sb-k8j9l0m4x' };
     const roleNames = { 'sat-a': '出先 A', 'sat-b': '出先 B', 'std-a': 'スタジオ A', 'std-b': 'スタジオ B' };
@@ -79,7 +101,11 @@
     const params = new URLSearchParams(window.location.search);
     const urlRole = params.get('role');
 
-    // ★重要：画面をどこでもいいから触ったらマイクとスピーカーを許可させる
+    // リフレッシュ用リンクのURLをセット
+    if (urlRole) {
+        document.getElementById('refresh-link').href = window.location.href;
+    }
+
     function forceActivateAudio() {
         if (audioCtx && audioCtx.state === 'suspended') {
             audioCtx.resume();
@@ -88,9 +114,11 @@
         video.play().catch(() => {});
     }
 
-    function initNoise() {
+    function initAudioContext() {
         if (audioCtx) return;
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // サイドトーン用ノイズ
         const bufferSize = 2 * audioCtx.sampleRate, buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate), output = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
         const noiseNode = audioCtx.createBufferSource();
@@ -106,16 +134,19 @@
     }
     setInterval(updateClock, 1000); updateClock();
 
-    function tapAction(type) {
-        forceActivateAudio(); // タップのたびにオーディオを叩き起こす
+    function tapAction(type, event) {
+        forceActivateAudio(); 
         counters[type]++;
         if (counters[type] >= 3) {
             if (type === 'refresh') {
-                // 強制リロード
-                window.location.href = window.location.href;
+                // リンクとして動作させる（何もしない＝hrefへ飛ぶ）
+                counters[type] = 0;
+            } else if (type === 'lock') {
+                toggleLock();
+                counters[type] = 0;
             }
-            if (type === 'lock') toggleLock();
-            counters[type] = 0;
+        } else {
+            if (type === 'refresh') event.preventDefault(); // 3回未満なら飛ばない
         }
         setTimeout(() => { counters[type] = 0; }, 1200);
     }
@@ -124,13 +155,13 @@
         if (!val || !idMap[val]) return;
         document.getElementById('role-label').innerText = `【 ${roleNames[val]} 】`;
         document.getElementById('role-name-top').innerText = roleNames[val];
-        document.getElementById('status-display').innerText = `待機中: ${roleNames[val]}`;
         
-        initNoise();
-        if (peer) peer.destroy();
+        initAudioContext();
+        
         peer = new Peer(idMap[val], { config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]}});
         
         peer.on('open', () => { 
+            document.getElementById('status-display').innerText = `待機中: ${roleNames[val]}`;
             if (val.startsWith('sat')) {
                 const target = val.replace('sat', 'std');
                 setTimeout(() => connectToTarget(target), 2000);
@@ -138,24 +169,24 @@
         });
 
         peer.on('call', async call => {
-            if (!localStream) {
-                localStream = await navigator.mediaDevices.getUserMedia({audio: true});
-                localStream.getAudioTracks()[0].enabled = false;
-            }
+            await ensureMedia();
             call.answer(localStream);
             handleCall(call);
         });
     }
 
+    async function ensureMedia() {
+        if (!localStream) {
+            localStream = await navigator.mediaDevices.getUserMedia({audio: true});
+            localStream.getAudioTracks()[0].enabled = isLocked; 
+        }
+        return localStream;
+    }
+
     async function connectToTarget(target) {
         if (!target || !peer) return;
-        if (!localStream) {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({audio: true});
-                localStream.getAudioTracks()[0].enabled = false;
-            } catch(e) { console.log(e); }
-        }
-        document.getElementById('status-display').innerText = `${roleNames[target]} を呼出中...`;
+        await ensureMedia();
+        document.getElementById('status-display').innerText = `${roleNames[target]} 呼出中...`;
         const call = peer.call(idMap[target], localStream);
         handleCall(call);
     }
@@ -165,7 +196,36 @@
             const audio = new Audio(); audio.srcObject = stream; audio.play();
             document.getElementById('status-display').innerText = "接続済み (CONNECTED)";
             document.getElementById('status-display').style.color = "#00ffff";
+            setupSigLamp(stream); // SIGランプ開始
         });
+    }
+
+    // SIGランプの解析処理
+    function setupSigLamp(stream) {
+        if (!audioCtx) initAudioContext();
+        remoteAnalyser = audioCtx.createAnalyser();
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(remoteAnalyser);
+        remoteAnalyser.fftSize = 256;
+        const bufferLength = remoteAnalyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+
+        const lamp = document.getElementById('sig-lamp');
+        const checkVolume = () => {
+            remoteAnalyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for(let i=0; i<bufferLength; i++) { sum += dataArray[i]; }
+            let average = sum / bufferLength;
+            
+            // しきい値（変調が乗っているか）判定
+            if (average > 15) { // 現場に合わせて調整
+                lamp.classList.add('active');
+            } else {
+                lamp.classList.remove('active');
+            }
+            requestAnimationFrame(checkVolume);
+        };
+        checkVolume();
     }
 
     function setSideTone(active) {
@@ -175,48 +235,50 @@
     }
 
     function toggleLock() {
-        if (!peer) return;
         isLocked = !isLocked;
         const ptt = document.getElementById('ptt-area');
         const pttText = document.getElementById('ptt-text');
         const btn = document.getElementById('lock-btn');
-        if (isLocked) {
-            ptt.classList.add('locked'); pttText.innerText = "送信固定中 (ON)";
-            btn.classList.add('active-lock');
-            if(localStream) localStream.getAudioTracks()[0].enabled = true;
-            setSideTone(true);
-        } else {
-            ptt.classList.remove('locked'); pttText.innerText = "PUSH TO TALK";
-            btn.classList.remove('active-lock');
-            if(localStream) localStream.getAudioTracks()[0].enabled = false;
-            setSideTone(false);
-        }
+        
+        ensureMedia().then(stream => {
+            if (isLocked) {
+                ptt.classList.add('locked'); pttText.innerText = "送信固定中 (ON)";
+                btn.classList.add('active-lock');
+                stream.getAudioTracks()[0].enabled = true;
+                setSideTone(true);
+            } else {
+                ptt.classList.remove('locked'); pttText.innerText = "PUSH TO TALK";
+                btn.classList.remove('active-lock');
+                stream.getAudioTracks()[0].enabled = false;
+                setSideTone(false);
+            }
+        });
     }
 
     const pttArea = document.getElementById('ptt-area');
     const startTalk = (e) => {
         forceActivateAudio(); 
-        if (isLocked || !localStream) return;
+        if (isLocked) return;
         if (e.cancelable) e.preventDefault();
-        localStream.getAudioTracks()[0].enabled = true;
-        pttArea.classList.add('active'); document.getElementById('ptt-text').innerText = "送信中...";
-        setSideTone(true);
+        ensureMedia().then(stream => {
+            stream.getAudioTracks()[0].enabled = true;
+            pttArea.classList.add('active'); document.getElementById('ptt-text').innerText = "送信中...";
+            setSideTone(true);
+        });
     };
     const stopTalk = () => {
-        if (isLocked || !localStream) return;
-        localStream.getAudioTracks()[0].enabled = false;
-        pttArea.classList.remove('active'); document.getElementById('ptt-text').innerText = "PUSH TO TALK";
-        setSideTone(false);
+        if (isLocked) return;
+        ensureMedia().then(stream => {
+            stream.getAudioTracks()[0].enabled = false;
+            pttArea.classList.remove('active'); document.getElementById('ptt-text').innerText = "PUSH TO TALK";
+            setSideTone(false);
+        });
     };
 
     pttArea.onmousedown = startTalk; pttArea.onmouseup = stopTalk;
     pttArea.ontouchstart = startTalk; pttArea.ontouchend = stopTalk;
 
-    window.onload = () => {
-        if (urlRole) {
-            registerMe(urlRole);
-        }
-    };
+    window.onload = () => { if (urlRole) { registerMe(urlRole); } };
 </script>
 </body>
 </html>
