@@ -35,15 +35,12 @@
         .safety-btn.active-lock { background: #d35400; border-color: #f39c12; }
         .tap-notice { font-size: 13px; color: #fff; background: #c0392b; padding: 3px 10px; border-radius: 4px; margin: 6px 0; font-weight: bold; }
         #status-display { font-size: 11px; color: #00ff00; background: #000; padding: 2px 0; height: 16px; overflow: hidden; }
-        
-        /* 役割表示とボタンの文字サイズ微調整 */
         #role-label { font-size: 20px; color: #f1c40f; margin-bottom: 10px; font-weight: bold; }
         .current-role-display { font-size: 14px; color: #aaa; margin-bottom: 5px; }
-
         #keep-awake-video { position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; }
     </style>
 </head>
-<body>
+<body onclick="forceActivateAudio()">
 
 <div id="status-display">待機中</div>
 
@@ -73,7 +70,7 @@
 </div>
 
 <script>
-    let peer = null, localStream = null, isLocked = false, counters = { refresh: 0, lock: 0 }, wakeLock = null;
+    let peer = null, localStream = null, isLocked = false, counters = { refresh: 0, lock: 0 };
     let audioCtx = null, noiseGain = null;
 
     const idMap = { 'sat-a': 'lf-p-sa-v9x2u7k1w', 'sat-b': 'lf-p-sb-m4n5p8j3q', 'std-a': 'lf-p-sa-r1t2y6v9b', 'std-b': 'lf-p-sb-k8j9l0m4x' };
@@ -82,7 +79,11 @@
     const params = new URLSearchParams(window.location.search);
     const urlRole = params.get('role');
 
-    function startVideoKeepAwake() {
+    // ★重要：画面をどこでもいいから触ったらマイクとスピーカーを許可させる
+    function forceActivateAudio() {
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
         const video = document.getElementById('keep-awake-video');
         video.play().catch(() => {});
     }
@@ -90,7 +91,6 @@
     function initNoise() {
         if (audioCtx) return;
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
         const bufferSize = 2 * audioCtx.sampleRate, buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate), output = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
         const noiseNode = audioCtx.createBufferSource();
@@ -106,17 +106,14 @@
     }
     setInterval(updateClock, 1000); updateClock();
 
-    async function requestWakeLock() {
-        if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} }
-    }
-
     function tapAction(type) {
-        initNoise();
-        requestWakeLock();
-        startVideoKeepAwake();
+        forceActivateAudio(); // タップのたびにオーディオを叩き起こす
         counters[type]++;
         if (counters[type] >= 3) {
-            if (type === 'refresh') location.reload();
+            if (type === 'refresh') {
+                // 強制リロード
+                window.location.href = window.location.href;
+            }
             if (type === 'lock') toggleLock();
             counters[type] = 0;
         }
@@ -125,15 +122,12 @@
 
     function registerMe(val) {
         if (!val || !idMap[val]) return;
-        
         document.getElementById('role-label').innerText = `【 ${roleNames[val]} 】`;
         document.getElementById('role-name-top').innerText = roleNames[val];
         document.getElementById('status-display').innerText = `待機中: ${roleNames[val]}`;
         
         initNoise();
-        startVideoKeepAwake();
         if (peer) peer.destroy();
-        
         peer = new Peer(idMap[val], { config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]}});
         
         peer.on('open', () => { 
@@ -201,7 +195,7 @@
 
     const pttArea = document.getElementById('ptt-area');
     const startTalk = (e) => {
-        initNoise(); startVideoKeepAwake();
+        forceActivateAudio(); 
         if (isLocked || !localStream) return;
         if (e.cancelable) e.preventDefault();
         localStream.getAudioTracks()[0].enabled = true;
@@ -221,8 +215,6 @@
     window.onload = () => {
         if (urlRole) {
             registerMe(urlRole);
-        } else {
-            document.getElementById('status-display').innerText = "エラー: URLパラメータが必要です";
         }
     };
 </script>
