@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
-    <title>PTT MATRIX - peer.html</title>
+    <title>PTT MATRIX - VIDEO HYBRID</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { 
@@ -13,7 +13,6 @@
             background: #1a1c1e; color: #fff; margin: 0; height: 100vh; overflow: hidden; 
             display: flex; flex-direction: column; user-select: none;
         }
-        /* ステータスとSIGランプのエリア */
         #status-container { 
             background: #000; height: 24px; display: flex; align-items: center; justify-content: center; 
             font-size: 11px; border-bottom: 1px solid #333;
@@ -26,15 +25,23 @@
         .sig-lamp.active { background: #00ff00; box-shadow: 0 0 10px #00ff00; }
 
         .header-panel { height: 22vh; background: #2c2e31; display: flex; flex-direction: column; }
-        .top-controls { flex-grow: 1; display: flex; width: 100%; }
+        .top-controls { flex-grow: 1; display: flex; width: 100%; align-items: stretch; }
+        
+        /* 映像窓：左上に配置 */
+        #remote-video {
+            width: 30%; height: 100%; background: #000; border-right: 1px solid #444; object-fit: cover;
+        }
+
+        /* 時計：サイズを少し調整して中央に */
         .clock-box { 
-            width: 66%; display: flex; align-items: center; justify-content: center; 
-            font-family: 'Roboto Mono', monospace; font-size: 50px; color: #f1c40f;
+            width: 40%; display: flex; align-items: center; justify-content: center; 
+            font-family: 'Roboto Mono', monospace; font-size: 32px; color: #f1c40f;
             background: #111; border-right: 1px solid #444;
         }
+        
         .config-box { 
-            width: 34%; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            text-decoration: none; color: inherit; /* リンク用 */
+            width: 30%; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            text-decoration: none; color: inherit;
         }
 
         #ptt-area { 
@@ -70,8 +77,8 @@
 
 <div class="header-panel">
     <div class="top-controls">
+        <video id="remote-video" autoplay playsinline></video>
         <div class="clock-box" id="clock">00:00:00</div>
-        <!-- プログラムリロードではなく、リンクとして踏ませる -->
         <a href="#" id="refresh-link" class="config-box" onclick="tapAction('refresh', event)">
             <div class="current-role-display" id="role-name-top">-</div>
             <div class="tap-notice">3回タップ</div>
@@ -93,7 +100,7 @@
 <script>
     let peer = null, localStream = null, isLocked = false, counters = { refresh: 0, lock: 0 };
     let audioCtx = null, noiseGain = null;
-    let remoteAnalyser = null, dataArray = null; // SIGランプ用
+    let remoteAnalyser = null, dataArray = null;
 
     const idMap = { 'sat-a': 'lf-p-sa-v9x2u7k1w', 'sat-b': 'lf-p-sb-m4n5p8j3q', 'std-a': 'lf-p-sa-r1t2y6v9b', 'std-b': 'lf-p-sb-k8j9l0m4x' };
     const roleNames = { 'sat-a': '出先 A', 'sat-b': '出先 B', 'std-a': 'スタジオ A', 'std-b': 'スタジオ B' };
@@ -101,7 +108,6 @@
     const params = new URLSearchParams(window.location.search);
     const urlRole = params.get('role');
 
-    // リフレッシュ用リンクのURLをセット
     if (urlRole) {
         document.getElementById('refresh-link').href = window.location.href;
     }
@@ -118,7 +124,6 @@
         if (audioCtx) return;
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        // サイドトーン用ノイズ
         const bufferSize = 2 * audioCtx.sampleRate, buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate), output = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
         const noiseNode = audioCtx.createBufferSource();
@@ -139,14 +144,13 @@
         counters[type]++;
         if (counters[type] >= 3) {
             if (type === 'refresh') {
-                // リンクとして動作させる（何もしない＝hrefへ飛ぶ）
                 counters[type] = 0;
             } else if (type === 'lock') {
                 toggleLock();
                 counters[type] = 0;
             }
         } else {
-            if (type === 'refresh') event.preventDefault(); // 3回未満なら飛ばない
+            if (type === 'refresh') event.preventDefault();
         }
         setTimeout(() => { counters[type] = 0; }, 1200);
     }
@@ -177,7 +181,11 @@
 
     async function ensureMedia() {
         if (!localStream) {
-            localStream = await navigator.mediaDevices.getUserMedia({audio: true});
+            // 映像も取得（低画質設定で通信節約）
+            localStream = await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video: { width: 320, height: 240, frameRate: 10 }
+            });
             localStream.getAudioTracks()[0].enabled = isLocked; 
         }
         return localStream;
@@ -193,14 +201,18 @@
 
     function handleCall(call) {
         call.on('stream', stream => {
+            // 音声再生
             const audio = new Audio(); audio.srcObject = stream; audio.play();
+            // 映像再生（左上のビデオ窓）
+            const video = document.getElementById('remote-video');
+            video.srcObject = stream;
+
             document.getElementById('status-display').innerText = "接続済み (CONNECTED)";
             document.getElementById('status-display').style.color = "#00ffff";
-            setupSigLamp(stream); // SIGランプ開始
+            setupSigLamp(stream);
         });
     }
 
-    // SIGランプの解析処理
     function setupSigLamp(stream) {
         if (!audioCtx) initAudioContext();
         remoteAnalyser = audioCtx.createAnalyser();
@@ -216,9 +228,7 @@
             let sum = 0;
             for(let i=0; i<bufferLength; i++) { sum += dataArray[i]; }
             let average = sum / bufferLength;
-            
-            // しきい値（変調が乗っているか）判定
-            if (average > 15) { // 現場に合わせて調整
+            if (average > 15) {
                 lamp.classList.add('active');
             } else {
                 lamp.classList.remove('active');
