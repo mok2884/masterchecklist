@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Time Pro - Final Production</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #B2DFDB; 
+            --lcd-bg: #c4dbd8;
+            --text-standard: #004D40;
+            --alert-yellow: #FFEB3B;
+            --alert-red: #FF1744;
+            --accent-red: #D32F2F;
+        }
+
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; position: fixed;
+            background-color: var(--bg-base);
+        }
+
+        #bg-wipe-layer {
+            position: fixed;
+            top: 50%; left: 50%;
+            width: 220vmax; height: 220vmax;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            pointer-events: none;
+            filter: blur(15px);
+            transition: opacity 0.3s;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            display: flex; flex-direction: column; align-items: center;
+            z-index: 2;
+        }
+
+        .console { 
+            width: 95%; max-width: 480px; height: 42%; 
+            padding: 20px; display: flex; flex-direction: column; gap: 15px;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 10;
+        }
+
+        .top-row { display: grid; grid-template-columns: 1fr 110px; align-items: flex-end; gap: 20px; }
+
+        #reset-btn { 
+            height: 45px; background: linear-gradient(to bottom, #26A69A, #00897B); 
+            border: none; border-radius: 12px; color: white; font-weight: bold; 
+            box-shadow: 0 4px #004D40; cursor: pointer; transition: all 0.05s;
+        }
+        #reset-btn:active { transform: translateY(3px); box-shadow: 0 1px #004D40; }
+
+        #start-stop-btn { 
+            height: 85px; background: linear-gradient(to bottom, #26A69A, #009688); 
+            border: none; border-radius: 20px; color: white; font-size: 1.1rem; font-weight: bold; 
+            box-shadow: 0 6px #00796B; cursor: pointer; transition: all 0.05s;
+        }
+        #start-stop-btn:active { transform: translateY(4px); box-shadow: 0 2px #00796B; }
+        
+        #display-panel { 
+            background-color: var(--lcd-bg); padding: 15px 20px; border-radius: 25px; 
+            border: 10px solid #75bdb3; 
+            box-shadow: inset 8px 8px 16px rgba(0,0,0,0.2), 0 10px 20px rgba(0,0,0,0.1); 
+            display: flex; flex-direction: column; flex-grow: 1; justify-content: center;
+            transition: transform 0.05s; cursor: pointer;
+        }
+        #display-panel:active { transform: scale(0.98); }
+
+        .label { font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; color: #00796B; opacity: 0.8; margin-bottom: 2px; }
+        #clock-val { color: var(--text-standard); font-size: 2rem; font-variant-numeric: tabular-nums; font-weight: 700; line-height: 1; }
+        
+        #main-time { 
+            color: var(--text-standard); font-size: 4.2rem; font-variant-numeric: tabular-nums; 
+            line-height: 1; text-align: right; transition: color 0.2s;
+        }
+
+        .running-text { color: var(--accent-red) !important; }
+        .divider { border: none; border-top: 2px solid rgba(0, 77, 64, 0.1); margin: 8px 0; }
+        .video-space { flex-grow: 1; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <div id="bg-wipe-layer"></div>
+
+    <div class="console">
+        <div class="top-row">
+            <button id="reset-btn" onpointerdown="handleReset(event)">RESET</button>
+            <button id="start-stop-btn" onpointerdown="handleStartStop(event)">START<br>STOP</button>
+        </div>
+
+        <div id="display-panel" onpointerdown="handleStartStop(event)">
+            <div class="label">REAL-TIME CLOCK</div>
+            <div id="clock-val">00:00:00</div>
+            <div class="divider"></div>
+            <div class="label">STOPWATCH</div>
+            <div id="main-time">00'00"00</div>
+        </div>
+    </div>
+    <div class="video-space"></div>
+
+    <script>
+        let swRunning = false;
+        let swStartTime = 0;
+        let swElapsedMs = 0;
+        let swInterval = null;
+
+        const mainDisplay = document.getElementById('main-time');
+        const clockDisplay = document.getElementById('clock-val');
+        const bgLayer = document.getElementById('bg-wipe-layer');
+
+        function handleStartStop(e) {
+            if (e) e.preventDefault();
+            if (!swRunning) {
+                swRunning = true;
+                swStartTime = Date.now() - swElapsedMs;
+                swInterval = setInterval(updateSW, 10);
+                mainDisplay.classList.add('running-text');
+            } else {
+                swRunning = false;
+                clearInterval(swInterval);
+                mainDisplay.classList.remove('running-text');
+                clearAlerts();
+            }
+        }
+
+        function handleReset(e) {
+            if (e) e.preventDefault();
+            swRunning = false;
+            clearInterval(swInterval);
+            swElapsedMs = 0;
+            mainDisplay.innerText = "00'00\"00";
+            mainDisplay.classList.remove('running-text');
+            clearAlerts();
+        }
+
+        function updateSW() {
+            swElapsedMs = Date.now() - swStartTime;
+            let totalSec = Math.floor(swElapsedMs / 1000);
+            let subSecMs = swElapsedMs % 1000;
+            
+            let activeColor = null;
+
+            // アラートスケジュールの判定
+            if (totalSec >= 57 && totalSec < 65) {
+                activeColor = 'var(--alert-yellow)';
+            } else if (totalSec >= 65 && totalSec < 72) {
+                activeColor = 'var(--alert-red)';
+            } else if (totalSec >= 100 && totalSec < 105) { // 1分40秒 = 100秒
+                activeColor = 'var(--alert-yellow)';
+            } else if (totalSec >= 105 && totalSec < 110) { // 1分45秒 = 105秒
+                activeColor = 'var(--alert-red)';
+            }
+
+            if (activeColor) {
+                const blurAngle = 30;
+                if (subSecMs < 700) {
+                    const activeTime = 700;
+                    if (subSecMs < activeTime / 2) {
+                        let deg = (subSecMs / (activeTime / 2)) * 360;
+                        bgLayer.style.background = `conic-gradient(${activeColor} ${deg - blurAngle}deg, transparent ${deg}deg)`;
+                    } else {
+                        let deg = ((subSecMs - (activeTime / 2)) / (activeTime / 2)) * 360;
+                        bgLayer.style.background = `conic-gradient(transparent ${deg - blurAngle}deg, ${activeColor} ${deg}deg)`;
+                    }
+                } else {
+                    bgLayer.style.background = 'none';
+                }
+            } else {
+                clearAlerts();
+            }
+
+            let m = Math.floor(totalSec / 60);
+            let s = totalSec % 60;
+            let ms = Math.floor((swElapsedMs % 1000) / 10);
+            mainDisplay.innerText = `${String(m).padStart(2,'0')}'${String(s).padStart(2,'0')}"${String(ms).padStart(2,'0')}`;
+        }
+
+        function clearAlerts() {
+            bgLayer.style.background = 'none';
+        }
+
+        function updateClock() {
+            const now = new Date();
+            clockDisplay.innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>
