@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+body { background-color: #050505; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; }
+.console { background: #1a1a1a; padding: 30px; border-radius: 12px; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.display-row { display: flex; gap: 25px; align-items: flex-end; }
+.unit { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.label { color: #eee; font-weight: bold; font-size: 18px; font-family: "Arial Black", sans-serif; }
+.meter { position: relative; width: 300px; height: 160px; background-color: #fdfae1; overflow: hidden; border-radius: 4px; border: 1px solid #444; }
+.scope { position: relative; width: 240px; height: 240px; background-color: #000; border: 1px solid #444; border-radius: 4px; }
+.needle { position: absolute; top: 180px; left: 150px; width: 2px; height: 160px; background: #111; transform-origin: bottom center; margin-top: -160px; z-index: 10; }
+.controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 40px; color: #aaa; margin-top: 10px; }
+.knob-group { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+input[type=range] { width: 160px; cursor: pointer; }
+#btn { padding: 12px 40px; cursor: pointer; font-weight: bold; border-radius: 4px; border: none; background: #444; color: white; margin-top: 10px; }
+#btn.on { background: #d00; }
+canvas { position: absolute; top: 0; left: 0; z-index: 5; }
+</style>
+</head>
+<body>
+<div class="console">
+    <div class="display-row">
+        <div class="unit">
+            <div class="label">L-VU</div>
+            <div class="meter">
+                <canvas id="cvsL" width="300" height="160"></canvas>
+                <div id="ndlL" class="needle"></div>
+            </div>
+        </div>
+        <div class="unit">
+            <div class="label">R-VU</div>
+            <div class="meter">
+                <canvas id="cvsR" width="300" height="160"></canvas>
+                <div id="ndlR" class="needle"></div>
+            </div>
+        </div>
+        <div class="unit">
+            <div class="label">PHASE SCOPE</div>
+            <div class="scope">
+                <canvas id="cvsScope" width="240" height="240"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <div class="knob-group">
+            <label>VU GAIN</label>
+            <input type="range" id="vuGain" min="0" max="40" value="20">
+            <span id="vuVal">0 dB</span>
+        </div>
+        <div class="knob-group">
+            <label>SCOPE SENS.</label>
+            <!-- 感度を大幅に絞れるよう min を 0.1 に、初期値を 1.0 に変更 -->
+            <input type="range" id="scopeGain" min="0.1" max="5.0" step="0.1" value="1.0">
+            <span id="scopeVal">x1.0</span>
+        </div>
+    </div>
+    <button id="btn">POWER OFF</button>
+</div>
+
+<script>
+const VU_W = 300, VU_H = 160;
+const CX = 150, CY = 180, R_BASE = 135;
+const START_DEG = 145, END_DEG = 35;
+const V_MIN = Math.pow(10, -20/20), V_MAX = Math.pow(10, 3/20);
+
+function dbToAngle(db){
+    const v = Math.pow(10, db/20);
+    const norm = (v - V_MIN)/(V_MAX - V_MIN);
+    return START_DEG + (norm * (END_DEG - START_DEG));
+}
+
+function drawVUBase(canvasId) {
+    const ctx = document.getElementById(canvasId).getContext("2d");
+    ctx.clearRect(0, 0, VU_W, VU_H);
+    const mainMarks = [-20, -10, -7, -5, -3, -2, -1, 0, 1, 2, 3];
+    const fineMarks = [];
+    for(let d = 0; d < 3; d++) fineMarks.push(d + 0.25, d + 0.5, d + 0.75);
+
+    [...mainMarks, ...fineMarks].forEach(v => {
+        const rad = (-dbToAngle(v)) * Math.PI / 180;
+        const isRed = (v >= 0);
+        ctx.beginPath();
+        ctx.strokeStyle = isRed ? "#d00" : "#222";
+        let tickLen = isRed ? 16 : 11;
+        if (fineMarks.includes(v)) tickLen = 7;
+        ctx.lineWidth = mainMarks.includes(v) ? (isRed ? 3.5 : 2.5) : 1;
+        ctx.moveTo(CX + Math.cos(rad) * R_BASE, CY + Math.sin(rad) * R_BASE);
+        ctx.lineTo(CX + Math.cos(rad) * (R_BASE + tickLen), CY + Math.sin(rad) * (R_BASE + tickLen));
+        ctx.stroke();
+
+        if ([-20, -10, -7, -5, -3, 0, 3].includes(v)) {
+            ctx.font = "bold 17px Arial";
+            ctx.fillStyle = isRed ? "#d00" : "#222";
+            ctx.textAlign = "center";
+            const tx = CX + Math.cos(rad) * (R_BASE + 32);
+            const ty = CY + Math.sin(rad) * (R_BASE + 32) + 5;
+            ctx.fillText(Math.abs(v), tx, ty);
+        }
+    });
+    ctx.fillStyle = "#666"; ctx.font = "bold 18px serif"; ctx.fillText("VU", CX, VU_H - 25);
+}
+
+drawVUBase("cvsL"); drawVUBase("cvsR");
+
+let audioCtx, currentL = START_DEG, currentR = START_DEG;
+const btn = document.getElementById("btn");
+
+btn.onclick = async () => {
+    if (audioCtx) { audioCtx.close(); audioCtx = null; btn.innerText = "POWER OFF"; btn.classList.remove("on"); return; }
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    btn.innerText = "POWER ON"; btn.classList.add("on");
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const src = audioCtx.createMediaStreamSource(stream);
+    const splitter = audioCtx.createChannelSplitter(2);
+    const anaL = audioCtx.createAnalyser(), anaR = audioCtx.createAnalyser();
+    const gainNode = audioCtx.createGain();
+    
+    anaL.fftSize = anaR.fftSize = 1024;
+    src.connect(gainNode); gainNode.connect(splitter);
+    splitter.connect(anaL, 0); splitter.connect(anaR, 1);
+
+    const bufL = new Float32Array(anaL.fftSize), bufR = new Float32Array(anaR.fftSize);
+    const scopeCtx = document.getElementById("cvsScope").getContext("2d");
+    const vuWin = Math.floor(audioCtx.sampleRate * 0.3);
+    const vuBufL = [], vuBufR = [];
+
+    function loop() {
+        if (!audioCtx) return;
+        const vG = parseFloat(document.getElementById("vuGain").value);
+        const sG = parseFloat(document.getElementById("scopeGain").value);
+        gainNode.gain.value = Math.pow(10, (vG - 20) / 20);
+        document.getElementById("vuVal").innerText = (vG-20>=0?"+":"")+(vG-20)+" dB";
+        document.getElementById("scopeVal").innerText = "x" + sG.toFixed(1);
+
+        anaL.getFloatTimeDomainData(bufL); anaR.getFloatTimeDomainData(bufR);
+
+        const getRMS = (b, vBuf) => {
+            for(let i=0; i<b.length; i++) vBuf.push(b[i]*b[i]);
+            while(vBuf.length > vuWin) vBuf.shift();
+            return Math.sqrt(vBuf.reduce((a,b)=>a+b,0)/vBuf.length);
+        };
+        let dbL = 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12;
+        let dbR = 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12;
+        currentL += (dbToAngle(Math.max(-20, Math.min(3, dbL))) - currentL) * 0.15;
+        currentR += (dbToAngle(Math.max(-20, Math.min(3, dbR))) - currentR) * 0.15;
+        document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
+        document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
+
+        // XY Scope - 感度を調整
+        scopeCtx.fillStyle = "rgba(0, 10, 0, 0.15)";
+        scopeCtx.fillRect(0, 0, 240, 240);
+        
+        scopeCtx.strokeStyle = "#1a3a1a"; scopeCtx.lineWidth = 1;
+        scopeCtx.beginPath(); scopeCtx.moveTo(120, 0); scopeCtx.lineTo(120, 240); scopeCtx.moveTo(0, 120); scopeCtx.lineTo(240, 120); scopeCtx.stroke();
+
+        scopeCtx.beginPath();
+        scopeCtx.strokeStyle = "#00ff66";
+        scopeCtx.lineWidth = 1.2;
+        
+        // 描画倍率を sG * 40 程度に抑えて、スケールの効きを良くしました
+        for(let i=0; i<bufL.length; i++) {
+            const x = (bufL[i] - bufR[i]) * sG * 45 + 120;
+            const y = 120 - (bufL[i] + bufR[i]) * sG * 45;
+            if(i===0) scopeCtx.moveTo(x, y); else scopeCtx.lineTo(x, y);
+        }
+        scopeCtx.stroke();
+        requestAnimationFrame(loop);
+    }
+    loop();
+};
+</script>
+</body>
+</html>
