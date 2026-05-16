@@ -107,16 +107,27 @@ btn.onclick = async () => {
     if (audioCtx) { audioCtx.close(); audioCtx = null; btn.innerText = "POWER OFF"; btn.classList.remove("on"); return; }
     
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // U2-2の2つの独立したチャンネルをステレオ(L/R)として強制的に認識させる設定
     const constraints = { 
         audio: { 
             deviceId: micSelect.value ? { exact: micSelect.value } : undefined,
+            channelCount: { exact: 2 }, // ここを「絶対に2chステレオ」に強制固定
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false
         } 
     };
     
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch(e) {
+        // もしexact指定でエラーが出る古い環境向けのエスケープ処理
+        console.log("ステレオ強制リトライ");
+        constraints.audio.channelCount = { ideal: 2 };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+    }
+    
     btn.innerText = "POWER ON"; btn.classList.add("on");
     
     const src = audioCtx.createMediaStreamSource(stream);
@@ -147,7 +158,6 @@ btn.onclick = async () => {
             return Math.sqrt(vBuf.reduce((a,b)=>a+b,0)/vBuf.length);
         };
         
-        // 針の追従係数を 0.15 から 0.22 に変更し、少し機敏に動くようにしました
         currentL += (dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12))) - currentL) * 0.22;
         currentR += (dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12))) - currentR) * 0.22;
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
