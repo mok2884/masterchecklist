@@ -87,7 +87,6 @@ const micSelect = document.getElementById('micSelect');
 const btn = document.getElementById("btn");
 let audioCtx, stream, currentL = START_DEG, currentR = START_DEG;
 
-// デバイスリストを取得
 async function getDevices() {
     const devices = await navigator.mediaDevices.enumerateDevices();
     micSelect.innerHTML = '';
@@ -99,7 +98,6 @@ async function getDevices() {
     });
 }
 
-// 権限許可後にデバイス名を出す
 navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
     s.getTracks().forEach(t => t.stop());
     getDevices();
@@ -109,7 +107,6 @@ btn.onclick = async () => {
     if (audioCtx) { audioCtx.close(); audioCtx = null; btn.innerText = "POWER OFF"; btn.classList.remove("on"); return; }
     
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // 選択されたデバイスIDで接続
     const constraints = { 
         audio: { 
             deviceId: micSelect.value ? { exact: micSelect.value } : undefined,
@@ -157,8 +154,10 @@ btn.onclick = async () => {
         scopeCtx.fillStyle = "rgba(0, 10, 0, 0.2)"; scopeCtx.fillRect(0, 0, 220, 220);
         scopeCtx.strokeStyle = "#1a3a1a"; scopeCtx.beginPath(); scopeCtx.moveTo(110, 0); scopeCtx.lineTo(110, 220); scopeCtx.moveTo(0, 110); scopeCtx.lineTo(220, 110); scopeCtx.stroke();
         scopeCtx.beginPath(); scopeCtx.strokeStyle = "#00ff66"; scopeCtx.lineWidth = 1.2;
+        
         for(let i=0; i<bufL.length; i++) {
-            const x = (bufL[i] - bufR[i]) * sG * 40 + 110;
+            // X軸の引き算を R - L に入れ替えて左右の傾きを修正しました
+            const x = (bufR[i] - bufL[i]) * sG * 40 + 110;
             const y = 110 - (bufL[i] + bufR[i]) * sG * 40;
             if(i===0) scopeCtx.moveTo(x, y); else scopeCtx.lineTo(x, y);
         }
