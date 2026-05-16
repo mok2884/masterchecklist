@@ -146,8 +146,10 @@ btn.onclick = async () => {
             while(vBuf.length > vuWin) vBuf.shift();
             return Math.sqrt(vBuf.reduce((a,b)=>a+b,0)/vBuf.length);
         };
-        currentL += (dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12))) - currentL) * 0.15;
-        currentR += (dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12))) - currentR) * 0.15;
+        
+        // 針の追従係数を 0.15 から 0.22 に変更し、少し機敏に動くようにしました
+        currentL += (dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12))) - currentL) * 0.22;
+        currentR += (dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12))) - currentR) * 0.22;
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
         document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
 
@@ -156,7 +158,6 @@ btn.onclick = async () => {
         scopeCtx.beginPath(); scopeCtx.strokeStyle = "#00ff66"; scopeCtx.lineWidth = 1.2;
         
         for(let i=0; i<bufL.length; i++) {
-            // X軸の引き算を R - L に入れ替えて左右の傾きを修正しました
             const x = (bufR[i] - bufL[i]) * sG * 40 + 110;
             const y = 110 - (bufL[i] + bufR[i]) * sG * 40;
             if(i===0) scopeCtx.moveTo(x, y); else scopeCtx.lineTo(x, y);
