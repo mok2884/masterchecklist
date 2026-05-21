@@ -86,6 +86,7 @@ drawVUBase("cvsL"); drawVUBase("cvsR");
 const micSelect = document.getElementById('micSelect');
 const btn = document.getElementById("btn");
 let audioCtx, stream, currentL = START_DEG, currentR = START_DEG;
+let wakeLock = null; // 画面消灯防止用オブジェクト
 
 async function getDevices() {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -103,8 +104,36 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
     getDevices();
 });
 
+// 画面常時点灯をリクエストする関数
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('画面消灯防止モード：ON');
+        }
+    } catch (err) {
+        console.log('Wake Lock エラー:', err.message);
+    }
+}
+
+// 画面常時点灯を解除する関数
+function releaseWakeLock() {
+    if (wakeLock !== null) {
+        wakeLock.release();
+        wakeLock = null;
+        console.log('画面消灯防止モード：OFF');
+    }
+}
+
 btn.onclick = async () => {
-    if (audioCtx) { audioCtx.close(); audioCtx = null; btn.innerText = "POWER OFF"; btn.classList.remove("on"); return; }
+    if (audioCtx) { 
+        audioCtx.close(); 
+        audioCtx = null; 
+        btn.innerText = "POWER OFF"; 
+        btn.classList.remove("on"); 
+        releaseWakeLock(); // オフ時に画面スリープ制限を解除
+        return; 
+    }
     
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
@@ -127,6 +156,7 @@ btn.onclick = async () => {
     }
     
     btn.innerText = "POWER ON"; btn.classList.add("on");
+    await requestWakeLock(); // オン時に画面を常時点灯させる
     
     const src = audioCtx.createMediaStreamSource(stream);
     const splitter = audioCtx.createChannelSplitter(2);
@@ -140,8 +170,8 @@ btn.onclick = async () => {
     const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
     const scopeCtx = document.getElementById("cvsScope").getContext("2d");
     
-    // 【機敏さUP】平均化の窓幅を300msから150ms（0.15）に短縮して初速を改善
-    const vuWin = Math.floor(audioCtx.sampleRate * 0.15), vuBufL = [], vuBufR = [];
+    // 【調整：中間を狙う】窓幅を最初の300msとさっきの150msの間、200ms（0.20）にして程よい初速に
+    const vuWin = Math.floor(audioCtx.sampleRate * 0.20), vuBufL = [], vuBufR = [];
 
     function loop() {
         if (!audioCtx) return;
@@ -161,9 +191,9 @@ btn.onclick = async () => {
         const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
         const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
 
-        // 【キレ味UP】追従スピードを 0.22 から 0.34 に引き上げて俊敏な動きに
-        currentL += (targetL - currentL) * 0.34;
-        currentR += (targetR - currentR) * 0.34;
+        // 【調整：中間を狙う】追従スピードを 0.22 と 0.34 の中間、0.27 に固定。アナログらしい心地よい重み
+        currentL += (targetL - currentL) * 0.27;
+        currentR += (targetR - currentR) * 0.27;
         
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
         document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
@@ -182,6 +212,13 @@ btn.onclick = async () => {
     }
     loop();
 };
+
+// タブを切り替えて戻ってきたときに消灯防止を再申請する保険処理
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+    }
+});
 </script>
 </body>
 </html>
