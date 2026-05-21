@@ -108,11 +108,10 @@ btn.onclick = async () => {
     
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // U2-2の2つの独立したチャンネルをステレオ(L/R)として強制的に認識させる設定
     const constraints = { 
         audio: { 
             deviceId: micSelect.value ? { exact: micSelect.value } : undefined,
-            channelCount: { exact: 2 }, // ここを「絶対に2chステレオ」に強制固定
+            channelCount: { exact: 2 }, 
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false
@@ -122,7 +121,6 @@ btn.onclick = async () => {
     try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch(e) {
-        // もしexact指定でエラーが出る古い環境向けのエスケープ処理
         console.log("ステレオ強制リトライ");
         constraints.audio.channelCount = { ideal: 2 };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -141,7 +139,9 @@ btn.onclick = async () => {
 
     const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
     const scopeCtx = document.getElementById("cvsScope").getContext("2d");
-    const vuWin = Math.floor(audioCtx.sampleRate * 0.3), vuBufL = [], vuBufR = [];
+    
+    // 【機敏さUP】平均化の窓幅を300msから150ms（0.15）に短縮して初速を改善
+    const vuWin = Math.floor(audioCtx.sampleRate * 0.15), vuBufL = [], vuBufR = [];
 
     function loop() {
         if (!audioCtx) return;
@@ -158,8 +158,13 @@ btn.onclick = async () => {
             return Math.sqrt(vBuf.reduce((a,b)=>a+b,0)/vBuf.length);
         };
         
-        currentL += (dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12))) - currentL) * 0.22;
-        currentR += (dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12))) - currentR) * 0.22;
+        const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
+        const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
+
+        // 【キレ味UP】追従スピードを 0.22 から 0.34 に引き上げて俊敏な動きに
+        currentL += (targetL - currentL) * 0.34;
+        currentR += (targetR - currentR) * 0.34;
+        
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
         document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
 
