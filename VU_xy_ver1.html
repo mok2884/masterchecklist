@@ -168,7 +168,6 @@ btn.onclick = async () => {
     const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
     const scopeCtx = document.getElementById("cvsScope").getContext("2d");
     
-    // 窓幅を160msに設定（アタックの機敏さを確保するため）
     const vuWin = Math.floor(audioCtx.sampleRate * 0.16), vuBufL = [], vuBufR = [];
 
     function loop() {
@@ -189,21 +188,20 @@ btn.onclick = async () => {
         const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
         const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
 
-        // 【今回のコア修正】上がる時（数字が小さくなる＝時計回り）と、下がる時（大きくなる＝反時計回り）で速度を分岐
-        // START_DEG(145) から END_DEG(35) に向かうため、target < current のときが「針が上がる」状態になります。
+        // 【大修正】targetの角度が、現在の針の角度（current）より小さいときが「針が右に振れる（上がる）」です！
         
-        // 左チャンネルの物理エミュレート
+        // 左チャンネル
         if (targetL < currentL) {
-            currentL += (targetL - currentL) * 0.35; // 上がるときはサッと鋭く
+            currentL += (targetL - currentL) * 0.35; // 上がるときはサッと鋭く追従
         } else {
-            currentL += (targetL - currentL) * 0.18; // 下がるときはフワッと粘る
+            currentL += (targetL - currentL) * 0.16; // 戻るときはフワッと重めに（さらに少し粘りを足しました）
         }
 
-        // 右チャンネルの物理エミュレート
+        // 右チャンネル
         if (targetR < currentR) {
-            currentR += (targetR - currentR) * 0.35; // 上がるときはサッと鋭く
+            currentR += (targetR - currentR) * 0.35; // 上がるときはサッと鋭く追従
         } else {
-            currentR += (targetR - currentR) * 0.18; // 下がるときはフワッと粘る
+            currentR += (targetR - currentR) * 0.16; // 戻るときはフワッと重めに
         }
         
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
