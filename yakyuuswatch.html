@@ -71,7 +71,15 @@
         }
         #display-panel:active { transform: scale(0.98); }
 
-        .label { font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; color: #00796B; opacity: 0.8; margin-bottom: 2px; }
+        /* ラベル行をフレックスにして、右隣に文字を並べられるようにしたよ */
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2px;
+        }
+        .label { font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; color: #00796B; opacity: 0.8; }
+        
         #clock-val { color: var(--text-standard); font-size: 2rem; font-variant-numeric: tabular-nums; font-weight: 700; line-height: 1; }
         
         #main-time { 
@@ -82,34 +90,28 @@
         .running-text { color: var(--accent-red) !important; }
         .divider { border: none; border-top: 2px solid rgba(0, 77, 64, 0.1); margin: 8px 0; }
         
-        /* 窓（console）のすぐ下に文字を配置するためのエリア */
-        .video-space { 
-            flex-grow: 1; width: 100%; 
-            display: flex; flex-direction: column; align-items: center;
-            padding-top: 10px; /* 窓との間のちょっとした隙間 */
-            box-sizing: border-box;
-        }
+        /* さっきの下のエリアは元通りのシンプルな幅に戻したよ */
+        .video-space { flex-grow: 1; width: 100%; }
 
-        /* 裏しゃべりテキストのスタイル */
+        /* 窓の中に入る「裏しゃべり」テキストのスタイル */
         #ura-text {
-            font-size: 2.5rem;
+            font-size: 0.9rem; /* 液晶窓のラベルに合わせたスマートなサイズ */
             font-weight: 900;
             color: #FF1744; /* 中は赤 */
-            /* 黒い縁取り（text-shadowを4方向に重ねてクッキリさせてるよ） */
+            /* 黒縁（サイズに合わせて縁取りも少し細めに調整してシャープに） */
             text-shadow: 
-                2px  2px 0px #000,
-               -2px  2px 0px #000,
-                2px -2px 0px #000,
-               -2px -2px 0px #000,
-                0px  2px 0px #000,
-                0px -2px 0px #000,
-                2px  0px 0px #000,
-               -2px  0px 0px #000;
-            letter-spacing: 2px;
+                1px  1px 0px #000,
+               -1px  1px 0px #000,
+                1px -1px 0px #000,
+               -1px -1px 0px #000,
+                0px  1px 0px #000,
+                0px -1px 0px #000,
+                1px  0px 0px #000,
+               -1px  0px 0px #000;
+            letter-spacing: 1px;
             opacity: 0;
             transform: scale(0.8);
             pointer-events: none;
-            /* JavaScriptでリアルタイムに計算するから、スムーズに繋ぐためのtransition */
             transition: transform 0.02s linear, opacity 0.02s linear;
         }
     </style>
@@ -125,18 +127,20 @@
         </div>
 
         <div id="display-panel" onpointerdown="handleStartStop(event)">
-            <div class="label">REAL-TIME CLOCK</div>
+            <!-- リアルタイムクロックのラベル行の中にテキストを配置したよ！ -->
+            <div class="label-row">
+                <div class="label">REAL-TIME CLOCK</div>
+                <div id="ura-text">～裏しゃべり～</div>
+            </div>
+            
             <div id="clock-val">00:00:00</div>
             <div class="divider"></div>
-            <div class="label">STOPWATCH</div>
+            <div class="label" style="margin-bottom: 2px;">STOPWATCH</div>
             <div id="main-time">00'00"00</div>
         </div>
     </div>
     
-    <div class="video-space">
-        <!-- 窓のすぐ下に配置したよ！ -->
-        <div id="ura-text">～裏しゃべり～</div>
-    </div>
+    <div class="video-space"></div>
 
     <script>
         let swRunning = false;
@@ -195,7 +199,7 @@
                 isRedAlert = true;
             }
 
-            // ★ 「裏しゃべり」の表示判定（1分5秒から5秒間 ＝ 65秒から70秒未満）
+            // 「裏しゃべり」の表示判定（1分5秒から5秒間）
             let showUraText = (totalSec >= 65 && totalSec < 70);
 
             if (activeColor) {
@@ -223,25 +227,23 @@
                         let pos = 150 - (progress * 200);
                         bgLayer.style.background = `linear-gradient(135deg, ${baseColor} ${pos}%, ${activeColor} ${pos + edgeBlur}%)`;
                         
-                        // 文字の「ぼわん（拡大フェードイン）」を赤の波（300ms）と同期
+                        // 赤の波のせり上がりに合わせて窓の中で「ぼわん」
                         if (showUraText) {
                             uraText.style.opacity = progress;
-                            uraText.style.transform = `scale(${0.8 + (progress * 0.4)})`; // 0.8から1.2へ拡大
+                            uraText.style.transform = `scale(${0.8 + (progress * 0.3)})`; // 0.8から1.1へ拡大
                         }
                     } else if (subSecMs < 600) {
                         progress = (subSecMs - 300) / 300;
                         let pos = 150 - (progress * 200);
                         bgLayer.style.background = `linear-gradient(135deg, ${activeColor} ${pos}%, ${baseColor} ${pos + edgeBlur}%)`;
                         
-                        // 文字の「ぼわん（縮小フェードアウト）」を引く波（300ms）と同期
+                        // 波の引きに合わせて「ぼわん」と消える
                         if (showUraText) {
                             uraText.style.opacity = 1 - progress;
-                            uraText.style.transform = `scale(${1.2 - (progress * 0.4)})`; // 1.2から0.8へ戻る
+                            uraText.style.transform = `scale(${1.1 - (progress * 0.3)})`;
                         }
                     } else {
                         bgLayer.style.background = 'transparent';
-                        
-                        // 400msの固定退避時間は文字を消す
                         if (showUraText) {
                             uraText.style.opacity = 0;
                             uraText.style.transform = 'scale(0.8)';
@@ -252,7 +254,6 @@
                 clearAlerts();
             }
 
-            // スケジュール外、または5秒が過ぎたら完全に非表示にする
             if (!showUraText) {
                 uraText.style.opacity = 0;
                 uraText.style.transform = 'scale(0.8)';
