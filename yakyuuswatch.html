@@ -71,15 +71,15 @@
         }
         #display-panel:active { transform: scale(0.98); }
 
-        /* ラベル行をフレックスにして、右隣に文字を並べられるようにしたよ */
-        .label-row {
+        .label { font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; color: #00796B; opacity: 0.8; margin-bottom: 2px; }
+        
+        .clock-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2px;
+            width: 100%;
         }
-        .label { font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; color: #00796B; opacity: 0.8; }
-        
+
         #clock-val { color: var(--text-standard); font-size: 2rem; font-variant-numeric: tabular-nums; font-weight: 700; line-height: 1; }
         
         #main-time { 
@@ -89,30 +89,28 @@
 
         .running-text { color: var(--accent-red) !important; }
         .divider { border: none; border-top: 2px solid rgba(0, 77, 64, 0.1); margin: 8px 0; }
-        
-        /* さっきの下のエリアは元通りのシンプルな幅に戻したよ */
         .video-space { flex-grow: 1; width: 100%; }
 
-        /* 窓の中に入る「裏しゃべり」テキストのスタイル */
+        #ura-text-container {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 200px; 
+            height: 2.8rem;
+        }
+
         #ura-text {
-            font-size: 0.9rem; /* 液晶窓のラベルに合わせたスマートなサイズ */
-            font-weight: 900;
-            color: #FF1744; /* 中は赤 */
-            /* 黒縁（サイズに合わせて縁取りも少し細めに調整してシャープに） */
-            text-shadow: 
-                1px  1px 0px #000,
-               -1px  1px 0px #000,
-                1px -1px 0px #000,
-               -1px -1px 0px #000,
-                0px  1px 0px #000,
-                0px -1px 0px #000,
-                1px  0px 0px #000,
-               -1px  0px 0px #000;
-            letter-spacing: 1px;
-            opacity: 0;
-            transform: scale(0.8);
-            pointer-events: none;
-            transition: transform 0.02s linear, opacity 0.02s linear;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", sans-serif; 
+            font-size: 1.8rem;    
+            font-weight: bold;
+            color: var(--alert-red); 
+            letter-spacing: 0px;  
+            white-space: nowrap;
+            display: inline-block;
+            transform-origin: center center; 
+            transform: scale(1);
+            opacity: 0; /* ★通常時は非表示（スクリプトで自動コントロールするよ） */
+            transition: transform 0.01s linear, opacity 0.1s linear; 
         }
     </style>
 </head>
@@ -127,14 +125,18 @@
         </div>
 
         <div id="display-panel" onpointerdown="handleStartStop(event)">
-            <!-- リアルタイムクロックのラベル行の中にテキストを配置したよ！ -->
-            <div class="label-row">
-                <div class="label">REAL-TIME CLOCK</div>
-                <div id="ura-text">～裏しゃべり～</div>
+            <div class="label">REAL-TIME CLOCK</div>
+            
+            <div class="clock-row">
+                <div id="clock-val">00:00:00</div>
+                <div id="ura-text-container">
+                    <!-- 初期状態は空欄。時間になるとスクリプトが文字を入れ替えるよ！ -->
+                    <div id="ura-text"></div>
+                </div>
             </div>
             
-            <div id="clock-val">00:00:00</div>
             <div class="divider"></div>
+            
             <div class="label" style="margin-bottom: 2px;">STOPWATCH</div>
             <div id="main-time">00'00"00</div>
         </div>
@@ -185,30 +187,43 @@
             
             let activeColor = null;
             let isRedAlert = false;
+            let showUraText = false;
+            let targetText = "";
 
-            // アラートスケジュールの判定
-            if (totalSec >= 57 && totalSec < 65) {
-                activeColor = 'var(--alert-yellow)';
-            } else if (totalSec >= 65 && totalSec < 72) {
+            // 1. 【1分5秒〜1分12秒】のスケジュール判定
+            if (totalSec >= 65 && totalSec < 72) {
                 activeColor = 'var(--alert-red)';
                 isRedAlert = true;
-            } else if (totalSec >= 100 && totalSec < 105) {
+                showUraText = true;
+                targetText = "～裏しゃべり～";
+            } 
+            // 2. 【1分40秒〜1分47秒】のスケジュール判定
+            else if (totalSec >= 100 && totalSec < 107) {
+                // 背景ワイプ用のアラート色判定（100秒〜105秒は黄色、105秒以降は赤色）
+                if (totalSec < 105) {
+                    activeColor = 'var(--alert-yellow)';
+                } else {
+                    activeColor = 'var(--alert-red)';
+                    isRedAlert = true;
+                }
+                showUraText = true;
+                targetText = "～ポーズ～";
+            }
+            // 3. その他、背景ワイプだけが動く予備時間帯
+            else if (totalSec >= 57 && totalSec < 65) {
                 activeColor = 'var(--alert-yellow)';
-            } else if (totalSec >= 105 && totalSec < 110) {
+            } else if (totalSec >= 107 && totalSec < 110) {
                 activeColor = 'var(--alert-red)';
                 isRedAlert = true;
             }
 
-            // 「裏しゃべり」の表示判定（1分5秒から5秒間）
-            let showUraText = (totalSec >= 65 && totalSec < 70);
-
+            // --- 背景ワイプアニメーション処理 ---
             if (activeColor) {
                 let progress = 0;
                 const baseColor = 'var(--bg-base)';
                 const edgeBlur = 15;
 
                 if (!isRedAlert) {
-                    // 【黄色アラート】350ms / 350ms / 300ms
                     if (subSecMs < 350) {
                         progress = subSecMs / 350;
                         let pos = 150 - (progress * 200);
@@ -221,44 +236,47 @@
                         bgLayer.style.background = 'transparent';
                     }
                 } else {
-                    // 【赤色アラート】300ms / 300ms / 400ms
                     if (subSecMs < 300) {
                         progress = subSecMs / 300;
                         let pos = 150 - (progress * 200);
                         bgLayer.style.background = `linear-gradient(135deg, ${baseColor} ${pos}%, ${activeColor} ${pos + edgeBlur}%)`;
-                        
-                        // 赤の波のせり上がりに合わせて窓の中で「ぼわん」
-                        if (showUraText) {
-                            uraText.style.opacity = progress;
-                            uraText.style.transform = `scale(${0.8 + (progress * 0.3)})`; // 0.8から1.1へ拡大
-                        }
                     } else if (subSecMs < 600) {
                         progress = (subSecMs - 300) / 300;
                         let pos = 150 - (progress * 200);
                         bgLayer.style.background = `linear-gradient(135deg, ${activeColor} ${pos}%, ${baseColor} ${pos + edgeBlur}%)`;
-                        
-                        // 波の引きに合わせて「ぼわん」と消える
-                        if (showUraText) {
-                            uraText.style.opacity = 1 - progress;
-                            uraText.style.transform = `scale(${1.1 - (progress * 0.3)})`;
-                        }
                     } else {
                         bgLayer.style.background = 'transparent';
-                        if (showUraText) {
-                            uraText.style.opacity = 0;
-                            uraText.style.transform = 'scale(0.8)';
-                        }
                     }
                 }
             } else {
-                clearAlerts();
+                if (bgLayer.style.background !== 'transparent' && bgLayer.style.background !== 'none') {
+                    bgLayer.style.background = 'transparent';
+                }
             }
 
-            if (!showUraText) {
-                uraText.style.opacity = 0;
-                uraText.style.transform = 'scale(0.8)';
+            // --- 特設テキストの切り替え＆ボワンボワン処理 ---
+            if (showUraText) {
+                if (uraText.innerText !== targetText) {
+                    uraText.innerText = targetText;
+                }
+                uraText.style.opacity = "1";
+
+                // 1秒ループのスケールアニメーション
+                if (subSecMs < 300) {
+                    let textProgress = subSecMs / 300;
+                    uraText.style.transform = `scale(${1.0 + (textProgress * 0.4)})`;
+                } else if (subSecMs < 600) {
+                    let textProgress = (subSecMs - 300) / 300;
+                    uraText.style.transform = `scale(${1.4 - (textProgress * 0.4)})`;
+                } else {
+                    uraText.style.transform = 'scale(1.0)';
+                }
+            } else {
+                uraText.style.opacity = "0";
+                uraText.style.transform = 'scale(1.0)';
             }
 
+            // ストップウォッチの更新
             let m = Math.floor(totalSec / 60);
             let s = totalSec % 60;
             let ms = Math.floor((swElapsedMs % 1000) / 10);
@@ -269,8 +287,8 @@
             if (bgLayer.style.background !== 'transparent' && bgLayer.style.background !== 'none') {
                 bgLayer.style.background = 'transparent';
             }
-            uraText.style.opacity = 0;
-            uraText.style.transform = 'scale(0.8)';
+            uraText.style.opacity = "0";
+            uraText.style.transform = 'scale(1.0)';
         }
 
         function updateClock() {
