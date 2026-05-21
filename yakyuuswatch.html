@@ -19,17 +19,20 @@
             margin: 0; padding: 0; width: 100%; height: 100%;
             overflow: hidden; position: fixed;
             background-color: var(--bg-base);
+            /* スマホ等でのテキスト選択やハイライトを防止して機器感をアップ */
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         #bg-wipe-layer {
             position: fixed;
-            top: 50%; left: 50%;
-            width: 220vmax; height: 220vmax;
-            transform: translate(-50%, -50%);
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             z-index: 1;
             pointer-events: none;
-            filter: blur(15px);
-            transition: opacity 0.3s;
+            /* 斜め135度（右下から左上へ向かう傾き）のグラデーション */
+            background: linear-gradient(135deg, transparent 100%, transparent 100%);
+            transition: background 0.05s linear;
         }
 
         body { 
@@ -142,34 +145,57 @@
         function updateSW() {
             swElapsedMs = Date.now() - swStartTime;
             let totalSec = Math.floor(swElapsedMs / 1000);
-            let subSecMs = swElapsedMs % 1000;
+            let subSecMs = swElapsedMs % 1000; // 0〜999msのループ
             
             let activeColor = null;
+            let isRedAlert = false;
 
             // アラートスケジュールの判定
             if (totalSec >= 57 && totalSec < 65) {
                 activeColor = 'var(--alert-yellow)';
             } else if (totalSec >= 65 && totalSec < 72) {
                 activeColor = 'var(--alert-red)';
-            } else if (totalSec >= 100 && totalSec < 105) { // 1分40秒 = 100秒
+                isRedAlert = true;
+            } else if (totalSec >= 100 && totalSec < 105) {
                 activeColor = 'var(--alert-yellow)';
-            } else if (totalSec >= 105 && totalSec < 110) { // 1分45秒 = 105秒
+            } else if (totalSec >= 105 && totalSec < 110) {
                 activeColor = 'var(--alert-red)';
+                isRedAlert = true;
             }
 
             if (activeColor) {
-                const blurAngle = 30;
-                if (subSecMs < 700) {
-                    const activeTime = 700;
-                    if (subSecMs < activeTime / 2) {
-                        let deg = (subSecMs / (activeTime / 2)) * 360;
-                        bgLayer.style.background = `conic-gradient(${activeColor} ${deg - blurAngle}deg, transparent ${deg}deg)`;
+                let progress = 0;
+                
+                if (!isRedAlert) {
+                    // 黄色：350ms（上昇） / 350ms（下降） / 300ms（固定退避） = 計1000ms
+                    if (subSecMs < 350) {
+                        // 右下から左上へせり上がる（グラデーションの境界線を140%から-40%へ移動）
+                        progress = subSecMs / 350;
+                        let pos = 140 - (progress * 180);
+                        bgLayer.style.background = `linear-gradient(135deg, ${activeColor} ${pos}%, transparent ${pos + 40}%)`;
+                    } else if (subSecMs < 700) {
+                        // 左上から右下へ戻っていく（境界線を-40%から140%へ移動）
+                        progress = (subSecMs - 350) / 350;
+                        let pos = -40 + (progress * 180);
+                        bgLayer.style.background = `linear-gradient(135deg, ${activeColor} ${pos}%, transparent ${pos + 40}%)`;
                     } else {
-                        let deg = ((subSecMs - (activeTime / 2)) / (activeTime / 2)) * 360;
-                        bgLayer.style.background = `conic-gradient(transparent ${deg - blurAngle}deg, ${activeColor} ${deg}deg)`;
+                        // 残りの300msは元の背景色で固定
+                        bgLayer.style.background = 'transparent';
                     }
                 } else {
-                    bgLayer.style.background = 'none';
+                    // 赤色（切迫）：300ms（上昇） / 300ms（下降） / 400ms（固定退避） = 計1000ms
+                    if (subSecMs < 300) {
+                        progress = subSecMs / 300;
+                        let pos = 140 - (progress * 180);
+                        bgLayer.style.background = `linear-gradient(135deg, ${activeColor} ${pos}%, transparent ${pos + 40}%)`;
+                    } else if (subSecMs < 600) {
+                        progress = (subSecMs - 300) / 300;
+                        let pos = -40 + (progress * 180);
+                        bgLayer.style.background = `linear-gradient(135deg, ${activeColor} ${pos}%, transparent ${pos + 40}%)`;
+                    } else {
+                        // 残りの400msは元の背景色で固定
+                        bgLayer.style.background = 'transparent';
+                    }
                 }
             } else {
                 clearAlerts();
@@ -182,7 +208,10 @@
         }
 
         function clearAlerts() {
-            bgLayer.style.background = 'none';
+            // 背景レイヤーを透明化
+            if (bgLayer.style.background !== 'transparent' && bgLayer.style.background !== 'none') {
+                bgLayer.style.background = 'transparent';
+            }
         }
 
         function updateClock() {
@@ -190,7 +219,8 @@
             clockDisplay.innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
         }
 
-        setInterval(updateClock, 1000);
+        // 1秒ごとではなく200msごとに時計を更新することで、ラグを極力減らします
+        setInterval(updateClock, 200);
         updateClock();
     </script>
 </body>
