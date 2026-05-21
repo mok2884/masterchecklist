@@ -81,7 +81,37 @@
 
         .running-text { color: var(--accent-red) !important; }
         .divider { border: none; border-top: 2px solid rgba(0, 77, 64, 0.1); margin: 8px 0; }
-        .video-space { flex-grow: 1; width: 100%; }
+        
+        /* 窓（console）のすぐ下に文字を配置するためのエリア */
+        .video-space { 
+            flex-grow: 1; width: 100%; 
+            display: flex; flex-direction: column; align-items: center;
+            padding-top: 10px; /* 窓との間のちょっとした隙間 */
+            box-sizing: border-box;
+        }
+
+        /* 裏しゃべりテキストのスタイル */
+        #ura-text {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #FF1744; /* 中は赤 */
+            /* 黒い縁取り（text-shadowを4方向に重ねてクッキリさせてるよ） */
+            text-shadow: 
+                2px  2px 0px #000,
+               -2px  2px 0px #000,
+                2px -2px 0px #000,
+               -2px -2px 0px #000,
+                0px  2px 0px #000,
+                0px -2px 0px #000,
+                2px  0px 0px #000,
+               -2px  0px 0px #000;
+            letter-spacing: 2px;
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+            /* JavaScriptでリアルタイムに計算するから、スムーズに繋ぐためのtransition */
+            transition: transform 0.02s linear, opacity 0.02s linear;
+        }
     </style>
 </head>
 <body>
@@ -102,7 +132,11 @@
             <div id="main-time">00'00"00</div>
         </div>
     </div>
-    <div class="video-space"></div>
+    
+    <div class="video-space">
+        <!-- 窓のすぐ下に配置したよ！ -->
+        <div id="ura-text">～裏しゃべり～</div>
+    </div>
 
     <script>
         let swRunning = false;
@@ -113,6 +147,7 @@
         const mainDisplay = document.getElementById('main-time');
         const clockDisplay = document.getElementById('clock-val');
         const bgLayer = document.getElementById('bg-wipe-layer');
+        const uraText = document.getElementById('ura-text');
 
         function handleStartStop(e) {
             if (e) e.preventDefault();
@@ -160,48 +195,67 @@
                 isRedAlert = true;
             }
 
+            // ★ 「裏しゃべり」の表示判定（1分5秒から5秒間 ＝ 65秒から70秒未満）
+            let showUraText = (totalSec >= 65 && totalSec < 70);
+
             if (activeColor) {
                 let progress = 0;
-                const baseColor = 'var(--bg-base)'; // 元の背景色
-                const edgeBlur = 15; // 境界線のぼかし幅（%）
+                const baseColor = 'var(--bg-base)';
+                const edgeBlur = 15;
 
                 if (!isRedAlert) {
                     // 【黄色アラート】350ms / 350ms / 300ms
                     if (subSecMs < 350) {
-                        // ① 最初の350ms：右下から黄色が競り上がる
-                        // 左上が元色（baseColor）、右下がアラート色（activeColor）
                         progress = subSecMs / 350;
-                        let pos = 150 - (progress * 200); // 150%から-50%へ移動
+                        let pos = 150 - (progress * 200);
                         bgLayer.style.background = `linear-gradient(135deg, ${baseColor} ${pos}%, ${activeColor} ${pos + edgeBlur}%)`;
                     } else if (subSecMs < 700) {
-                        // ② 次の350ms：同じく右下から元色が追いかけて競り上がる
-                        // 左上がアラート色（activeColor）、右下が元色（baseColor）
                         progress = (subSecMs - 350) / 350;
                         let pos = 150 - (progress * 200);
                         bgLayer.style.background = `linear-gradient(135deg, ${activeColor} ${pos}%, ${baseColor} ${pos + edgeBlur}%)`;
                     } else {
-                        // ③ 残りの300ms：完全に元の色で固定
                         bgLayer.style.background = 'transparent';
                     }
                 } else {
                     // 【赤色アラート】300ms / 300ms / 400ms
                     if (subSecMs < 300) {
-                        // ① 最初の300ms：右下から赤色が競り上がる
                         progress = subSecMs / 300;
                         let pos = 150 - (progress * 200);
                         bgLayer.style.background = `linear-gradient(135deg, ${baseColor} ${pos}%, ${activeColor} ${pos + edgeBlur}%)`;
+                        
+                        // 文字の「ぼわん（拡大フェードイン）」を赤の波（300ms）と同期
+                        if (showUraText) {
+                            uraText.style.opacity = progress;
+                            uraText.style.transform = `scale(${0.8 + (progress * 0.4)})`; // 0.8から1.2へ拡大
+                        }
                     } else if (subSecMs < 600) {
-                        // ② 次の300ms：右下から元色が追いかけて競り上がる
                         progress = (subSecMs - 300) / 300;
                         let pos = 150 - (progress * 200);
                         bgLayer.style.background = `linear-gradient(135deg, ${activeColor} ${pos}%, ${baseColor} ${pos + edgeBlur}%)`;
+                        
+                        // 文字の「ぼわん（縮小フェードアウト）」を引く波（300ms）と同期
+                        if (showUraText) {
+                            uraText.style.opacity = 1 - progress;
+                            uraText.style.transform = `scale(${1.2 - (progress * 0.4)})`; // 1.2から0.8へ戻る
+                        }
                     } else {
-                        // ③ 残りの400ms：完全に元の色で固定
                         bgLayer.style.background = 'transparent';
+                        
+                        // 400msの固定退避時間は文字を消す
+                        if (showUraText) {
+                            uraText.style.opacity = 0;
+                            uraText.style.transform = 'scale(0.8)';
+                        }
                     }
                 }
             } else {
                 clearAlerts();
+            }
+
+            // スケジュール外、または5秒が過ぎたら完全に非表示にする
+            if (!showUraText) {
+                uraText.style.opacity = 0;
+                uraText.style.transform = 'scale(0.8)';
             }
 
             let m = Math.floor(totalSec / 60);
@@ -214,6 +268,8 @@
             if (bgLayer.style.background !== 'transparent' && bgLayer.style.background !== 'none') {
                 bgLayer.style.background = 'transparent';
             }
+            uraText.style.opacity = 0;
+            uraText.style.transform = 'scale(0.8)';
         }
 
         function updateClock() {
