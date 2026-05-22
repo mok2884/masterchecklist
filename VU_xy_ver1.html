@@ -140,7 +140,7 @@ btn.onclick = async () => {
     const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
     const scopeCtx = document.getElementById("cvsScope").getContext("2d");
     
-    // 【機敏さUP】平均化の窓幅を300msから150ms（0.15）に短縮して初速を改善
+    // 平均化の窓幅は 150ms（0.15）を完全維持
     const vuWin = Math.floor(audioCtx.sampleRate * 0.15), vuBufL = [], vuBufR = [];
 
     function loop() {
@@ -161,9 +161,9 @@ btn.onclick = async () => {
         const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
         const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
 
-        // 【キレ味UP】追従スピードを 0.22 から 0.34 に引き上げて俊敏な動きに
-        currentL += (targetL - currentL) * 0.34;
-        currentR += (targetR - currentR) * 0.34;
+        // 【速度微調整】0.34 から 0.30 へ、ほんの少しだけ全体をまろやかに
+        currentL += (targetL - currentL) * 0.30;
+        currentR += (targetR - currentR) * 0.30;
         
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
         document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
