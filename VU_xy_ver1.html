@@ -86,7 +86,7 @@ drawVUBase("cvsL"); drawVUBase("cvsR");
 const micSelect = document.getElementById('micSelect');
 const btn = document.getElementById("btn");
 let audioCtx, stream, currentL = START_DEG, currentR = START_DEG;
-let wakeLock = null;
+let wakeLock = null; // 画面消灯防止用オブジェクト
 
 async function getDevices() {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -104,6 +104,7 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
     getDevices();
 });
 
+// 画面常時点灯をリクエストする関数
 async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
@@ -115,6 +116,7 @@ async function requestWakeLock() {
     }
 }
 
+// 画面常時点灯を解除する関数
 function releaseWakeLock() {
     if (wakeLock !== null) {
         wakeLock.release();
@@ -129,7 +131,7 @@ btn.onclick = async () => {
         audioCtx = null; 
         btn.innerText = "POWER OFF"; 
         btn.classList.remove("on"); 
-        releaseWakeLock(); 
+        releaseWakeLock(); // オフ時に画面スリープ制限を解除
         return; 
     }
     
@@ -154,7 +156,7 @@ btn.onclick = async () => {
     }
     
     btn.innerText = "POWER ON"; btn.classList.add("on");
-    await requestWakeLock(); 
+    await requestWakeLock(); // オン時に画面を常時点灯させる
     
     const src = audioCtx.createMediaStreamSource(stream);
     const splitter = audioCtx.createChannelSplitter(2);
@@ -168,7 +170,8 @@ btn.onclick = async () => {
     const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
     const scopeCtx = document.getElementById("cvsScope").getContext("2d");
     
-    const vuWin = Math.floor(audioCtx.sampleRate * 0.16), vuBufL = [], vuBufR = [];
+    // 【ベース維持】RMSの窓幅は暫定版と同じ 0.20秒分
+    const vuWin = Math.floor(audioCtx.sampleRate * 0.20), vuBufL = [], vuBufR = [];
 
     function loop() {
         if (!audioCtx) return;
@@ -188,20 +191,19 @@ btn.onclick = async () => {
         const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
         const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
 
-        // 【大修正】targetの角度が、現在の針の角度（current）より小さいときが「針が右に振れる（上がる）」です！
-        
+        // 正しい上下判定（targetL < currentL が針の上がっている状態）
         // 左チャンネル
         if (targetL < currentL) {
-            currentL += (targetL - currentL) * 0.35; // 上がるときはサッと鋭く追従
+            currentL += (targetL - currentL) * 0.36; // 上がるときはもたつかず、機敏に反応
         } else {
-            currentL += (targetL - currentL) * 0.16; // 戻るときはフワッと重めに（さらに少し粘りを足しました）
+            currentL += (targetL - currentL) * 0.20; // 戻るときはフワッとゆっくり戻る
         }
 
         // 右チャンネル
         if (targetR < currentR) {
-            currentR += (targetR - currentR) * 0.35; // 上がるときはサッと鋭く追従
+            currentR += (targetR - currentR) * 0.36; // 上がるときは機敏に反応
         } else {
-            currentR += (targetR - currentR) * 0.16; // 戻るときはフワッと重めに
+            currentR += (targetR - currentR) * 0.20; // 戻るときはフワッとゆっくり戻る
         }
         
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
