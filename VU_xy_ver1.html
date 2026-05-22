@@ -86,7 +86,7 @@ drawVUBase("cvsL"); drawVUBase("cvsR");
 const micSelect = document.getElementById('micSelect');
 const btn = document.getElementById("btn");
 let audioCtx, stream, currentL = START_DEG, currentR = START_DEG;
-let wakeLock = null; // 画面消灯防止用オブジェクト
+let wakeLock = null;
 
 async function getDevices() {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -104,7 +104,6 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
     getDevices();
 });
 
-// 画面常時点灯をリクエストする関数
 async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
@@ -116,7 +115,6 @@ async function requestWakeLock() {
     }
 }
 
-// 画面常時点灯を解除する関数
 function releaseWakeLock() {
     if (wakeLock !== null) {
         wakeLock.release();
@@ -131,7 +129,7 @@ btn.onclick = async () => {
         audioCtx = null; 
         btn.innerText = "POWER OFF"; 
         btn.classList.remove("on"); 
-        releaseWakeLock(); // オフ時に画面スリープ制限を解除
+        releaseWakeLock(); 
         return; 
     }
     
@@ -156,7 +154,7 @@ btn.onclick = async () => {
     }
     
     btn.innerText = "POWER ON"; btn.classList.add("on");
-    await requestWakeLock(); // オン時に画面を常時点灯させる
+    await requestWakeLock(); 
     
     const src = audioCtx.createMediaStreamSource(stream);
     const splitter = audioCtx.createChannelSplitter(2);
@@ -170,7 +168,7 @@ btn.onclick = async () => {
     const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
     const scopeCtx = document.getElementById("cvsScope").getContext("2d");
     
-    // 【ベース維持】RMSの窓幅は暫定版と同じ 0.20秒分
+    // 窓幅は暫定版ベースの 0.20秒
     const vuWin = Math.floor(audioCtx.sampleRate * 0.20), vuBufL = [], vuBufR = [];
 
     function loop() {
@@ -191,19 +189,20 @@ btn.onclick = async () => {
         const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
         const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
 
-        // 正しい上下判定（targetL < currentL が針の上がっている状態）
-        // 左チャンネル
+        // 【確定版】target < current のときが「針が右に上がる（角度が減る）」状態
+        
+        // 左チャンネルの非対称駆動
         if (targetL < currentL) {
-            currentL += (targetL - currentL) * 0.36; // 上がるときはもたつかず、機敏に反応
+            currentL += (targetL - currentL) * 0.45; // 0.27から0.45に超加速！サッと鋭く上がる
         } else {
-            currentL += (targetL - currentL) * 0.20; // 戻るときはフワッとゆっくり戻る
+            currentL += (targetL - currentL) * 0.18; // 0.27から0.18に減速！フワッと心地よく左に戻る
         }
 
-        // 右チャンネル
+        // 右チャンネルの非対称駆動
         if (targetR < currentR) {
-            currentR += (targetR - currentR) * 0.36; // 上がるときは機敏に反応
+            currentR += (targetR - currentR) * 0.45; // サッと鋭く上がる
         } else {
-            currentR += (targetR - currentR) * 0.20; // 戻るときはフワッとゆっくり戻る
+            currentR += (targetR - currentR) * 0.18; // フワッとゆっくり戻る
         }
         
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
