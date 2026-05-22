@@ -86,7 +86,6 @@ drawVUBase("cvsL"); drawVUBase("cvsR");
 const micSelect = document.getElementById('micSelect');
 const btn = document.getElementById("btn");
 let audioCtx, stream, currentL = START_DEG, currentR = START_DEG;
-let wakeLock = null;
 
 async function getDevices() {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -104,34 +103,8 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
     getDevices();
 });
 
-async function requestWakeLock() {
-    try {
-        if ('wakeLock' in navigator) {
-            wakeLock = await navigator.wakeLock.request('screen');
-            console.log('画面消灯防止モード：ON');
-        }
-    } catch (err) {
-        console.log('Wake Lock エラー:', err.message);
-    }
-}
-
-function releaseWakeLock() {
-    if (wakeLock !== null) {
-        wakeLock.release();
-        wakeLock = null;
-        console.log('画面消灯防止モード：OFF');
-    }
-}
-
 btn.onclick = async () => {
-    if (audioCtx) { 
-        audioCtx.close(); 
-        audioCtx = null; 
-        btn.innerText = "POWER OFF"; 
-        btn.classList.remove("on"); 
-        releaseWakeLock(); 
-        return; 
-    }
+    if (audioCtx) { audioCtx.close(); audioCtx = null; btn.innerText = "POWER OFF"; btn.classList.remove("on"); return; }
     
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
@@ -154,7 +127,6 @@ btn.onclick = async () => {
     }
     
     btn.innerText = "POWER ON"; btn.classList.add("on");
-    await requestWakeLock(); 
     
     const src = audioCtx.createMediaStreamSource(stream);
     const splitter = audioCtx.createChannelSplitter(2);
@@ -168,8 +140,8 @@ btn.onclick = async () => {
     const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
     const scopeCtx = document.getElementById("cvsScope").getContext("2d");
     
-    // 窓幅は暫定版ベースの 0.20秒
-    const vuWin = Math.floor(audioCtx.sampleRate * 0.20), vuBufL = [], vuBufR = [];
+    // 【機敏さUP】平均化の窓幅を300msから150ms（0.15）に短縮して初速を改善
+    const vuWin = Math.floor(audioCtx.sampleRate * 0.15), vuBufL = [], vuBufR = [];
 
     function loop() {
         if (!audioCtx) return;
@@ -189,21 +161,9 @@ btn.onclick = async () => {
         const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
         const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
 
-        // 【確定版】target < current のときが「針が右に上がる（角度が減る）」状態
-        
-        // 左チャンネルの非対称駆動
-        if (targetL < currentL) {
-            currentL += (targetL - currentL) * 0.45; // 0.27から0.45に超加速！サッと鋭く上がる
-        } else {
-            currentL += (targetL - currentL) * 0.18; // 0.27から0.18に減速！フワッと心地よく左に戻る
-        }
-
-        // 右チャンネルの非対称駆動
-        if (targetR < currentR) {
-            currentR += (targetR - currentR) * 0.45; // サッと鋭く上がる
-        } else {
-            currentR += (targetR - currentR) * 0.18; // フワッとゆっくり戻る
-        }
+        // 【キレ味UP】追従スピードを 0.22 から 0.34 に引き上げて俊敏な動きに
+        currentL += (targetL - currentL) * 0.34;
+        currentR += (targetR - currentR) * 0.34;
         
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
         document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
@@ -222,12 +182,6 @@ btn.onclick = async () => {
     }
     loop();
 };
-
-document.addEventListener('visibilitychange', async () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-        await requestWakeLock();
-    }
-});
 </script>
 </body>
 </html>
