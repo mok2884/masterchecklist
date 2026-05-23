@@ -134,14 +134,16 @@ btn.onclick = async () => {
     const gainNode = audioCtx.createGain();
     
     anaL.fftSize = anaR.fftSize = 1024;
-    src.connect(gainNode); gainNode.connect(splitter);
+    src.connect(gainNode); gainNode.gain.value = 1; gainNode.connect(splitter);
     splitter.connect(anaL, 0); splitter.connect(anaR, 1);
 
     const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
     const scopeCtx = document.getElementById("cvsScope").getContext("2d");
     
-    // 平均化の窓幅は 150ms（0.15）を完全維持
     const vuWin = Math.floor(audioCtx.sampleRate * 0.15), vuBufL = [], vuBufR = [];
+
+    // リサージュの急激な変化（跳ね）を丸めるためのローパス用変数
+    let lastX = 110, lastY = 110;
 
     function loop() {
         if (!audioCtx) return;
@@ -161,21 +163,31 @@ btn.onclick = async () => {
         const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
         const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
 
-        // 【速度微調整】0.34 から 0.30 へ、ほんの少しだけ全体をまろやかに
-        currentL += (targetL - currentL) * 0.30;
-        currentR += (targetR - currentR) * 0.30;
+        // 【速度微調整】0.17 から、ほんの気持ちだけ重く「0.145」へ！
+        currentL += (targetL - currentL) * 0.145;
+        currentR += (targetR - currentR) * 0.145;
         
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
         document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
 
-        scopeCtx.fillStyle = "rgba(0, 10, 0, 0.2)"; scopeCtx.fillRect(0, 0, 220, 220);
+        // スコープの残像感を気持ち長めにして馴染ませる (0.2 -> 0.18)
+        scopeCtx.fillStyle = "rgba(0, 10, 0, 0.18)"; scopeCtx.fillRect(0, 0, 220, 220);
         scopeCtx.strokeStyle = "#1a3a1a"; scopeCtx.beginPath(); scopeCtx.moveTo(110, 0); scopeCtx.lineTo(110, 220); scopeCtx.moveTo(0, 110); scopeCtx.lineTo(220, 110); scopeCtx.stroke();
         scopeCtx.beginPath(); scopeCtx.strokeStyle = "#00ff66"; scopeCtx.lineWidth = 1.2;
         
-        for(let i=0; i<bufL.length; i++) {
-            const x = (bufR[i] - bufL[i]) * sG * 40 + 110;
-            const y = 110 - (bufL[i] + bufR[i]) * sG * 40;
-            if(i===0) scopeCtx.moveTo(x, y); else scopeCtx.lineTo(x, y);
+        // 1024サンプルすべて描画すると重くて暴れるので、ステップを少し間引いて滑らかに描画
+        for(let i=0; i<bufL.length; i+=2) {
+            const rawX = (bufR[i] - bufL[i]) * sG * 40 + 110;
+            const rawY = 110 - (bufL[i] + bufR[i]) * sG * 40;
+            
+            // 【リサージュゆるふわ化】前回の座標と0.4の割合でブレンドして、突発的な横跳ねを吸収
+            const targetX = lastX + (rawX - lastX) * 0.4;
+            const targetY = lastY + (rawY - lastY) * 0.4;
+            
+            if(i===0) scopeCtx.moveTo(targetX, targetY); else scopeCtx.lineTo(targetX, targetY);
+            
+            lastX = targetX;
+            lastY = targetY;
         }
         scopeCtx.stroke();
         requestAnimationFrame(loop);
