@@ -108,28 +108,22 @@ btn.onclick = async () => {
     
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // 【スマホ完全ハック指定】
-    // エコーキャンセル等の絶対拒否（exact: false）と低遅延（latency: 0）を組み合わせて、
-    // スマホのブラウザが勝手に通話モード（本体マイク）にすり替えるのを強制的に阻止します。
+    // 【完全復旧】元のiPad大成功バージョンの挙動に完全リセット
     const constraints = { 
         audio: { 
             deviceId: micSelect.value ? { exact: micSelect.value } : undefined,
             channelCount: { exact: 2 }, 
-            latency: 0,
-            echoCancellation: { exact: false },
-            noiseSuppression: { exact: false },
-            autoGainControl: { exact: false }
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
         } 
     };
     
     try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch(e) {
-        console.log("スマホのOSが完全拒否した場合のセーフティネット（idealフォールバック）");
-        // 万が一、exact指定が厳しすぎてエラーが出た場合は、デバイス選択を維持したまま緩めます
-        constraints.audio.echoCancellation = false;
-        constraints.audio.noiseSuppression = false;
-        constraints.audio.autoGainControl = false;
+        console.log("ステレオ強制リトライ");
+        constraints.audio.channelCount = { ideal: 2 };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
     }
     
@@ -168,7 +162,7 @@ btn.onclick = async () => {
         const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
         const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
 
-        // 【速度微調整】0.30 へ
+        // 【速度微調整】0.30
         currentL += (targetL - currentL) * 0.30;
         currentR += (targetR - currentR) * 0.30;
         
@@ -176,7 +170,7 @@ btn.onclick = async () => {
         document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
 
         scopeCtx.fillStyle = "rgba(0, 10, 0, 0.2)"; scopeCtx.fillRect(0, 0, 220, 220);
-        scopeCtx.strokeStyle = "#1a3a1a"; scopeCtx.beginPath(); scopeCtx.moveTo(110, 0); scopeCtx.lineTo(110, 220); scopeCtx.moveTo(0, 110); scopeCtx.lineTo(220, 110); stroke();
+        scopeCtx.strokeStyle = "#1a3a1a"; scopeCtx.beginPath(); scopeCtx.moveTo(110, 0); scopeCtx.lineTo(110, 220); scopeCtx.moveTo(0, 110); scopeCtx.lineTo(220, 110); scopeCtx.stroke();
         scopeCtx.beginPath(); scopeCtx.strokeStyle = "#00ff66"; scopeCtx.lineWidth = 1.2;
         
         for(let i=0; i<bufL.length; i++) {
