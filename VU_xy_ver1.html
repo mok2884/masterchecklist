@@ -18,6 +18,7 @@ input[type=range] { width: 130px; cursor: pointer; }
 #btn { padding: 10px 30px; cursor: pointer; font-weight: bold; border-radius: 4px; border: none; background: #444; color: white; }
 #btn.on { background: #d00; }
 canvas { position: absolute; top: 0; left: 0; z-index: 5; }
+#statusInfo { color: #00ff66; font-size: 12px; font-family: monospace; margin-top: -5px; }
 </style>
 </head>
 <body>
@@ -25,6 +26,7 @@ canvas { position: absolute; top: 0; left: 0; z-index: 5; }
     <div class="knob-group">
         <label style="color:#0f0">SELECT INPUT DEVICE:</label>
         <select id="micSelect"><option value="">-- Device List --</option></select>
+        <div id="statusInfo">STATUS: IDLE</div>
     </div>
 
     <div class="display-row">
@@ -85,6 +87,7 @@ drawVUBase("cvsL"); drawVUBase("cvsR");
 
 const micSelect = document.getElementById('micSelect');
 const btn = document.getElementById("btn");
+const statusInfo = document.getElementById("statusInfo");
 let audioCtx, stream, currentL = START_DEG, currentR = START_DEG;
 
 async function getDevices() {
@@ -104,15 +107,15 @@ navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
 });
 
 btn.onclick = async () => {
-    if (audioCtx) { audioCtx.close(); audioCtx = null; btn.innerText = "POWER OFF"; btn.classList.remove("on"); return; }
+    if (audioCtx) { audioCtx.close(); audioCtx = null; btn.innerText = "POWER OFF"; btn.classList.remove("on"); statusInfo.innerText = "STATUS: IDLE"; return; }
     
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // 【完全復旧】元のiPad大成功バージョンの挙動に完全リセット
+    // 【最優先：確実な取得】exact指定を完全に撤廃し、Androidが一番素直に開けるプレーンな要求に
     const constraints = { 
         audio: { 
-            deviceId: micSelect.value ? { exact: micSelect.value } : undefined,
-            channelCount: { exact: 2 }, 
+            deviceId: micSelect.value ? { ideal: micSelect.value } : undefined,
+            channelCount: { ideal: 2 }, // ステレオを「希望」しつつエラーを絶対回避
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false
@@ -121,67 +124,85 @@ btn.onclick = async () => {
     
     try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
-    } catch(e) {
-        console.log("ステレオ強制リトライ");
-        constraints.audio.channelCount = { ideal: 2 };
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-    }
-    
-    btn.innerText = "POWER ON"; btn.classList.add("on");
-    
-    const src = audioCtx.createMediaStreamSource(stream);
-    const splitter = audioCtx.createChannelSplitter(2);
-    const anaL = audioCtx.createAnalyser(), anaR = audioCtx.createAnalyser();
-    const gainNode = audioCtx.createGain();
-    
-    anaL.fftSize = anaR.fftSize = 1024;
-    src.connect(gainNode); gainNode.connect(splitter);
-    splitter.connect(anaL, 0); splitter.connect(anaR, 1);
-
-    const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
-    const scopeCtx = document.getElementById("cvsScope").getContext("2d");
-    
-    // 平均化の窓幅は 150ms（0.15）を完全維持
-    const vuWin = Math.floor(audioCtx.sampleRate * 0.15), vuBufL = [], vuBufR = [];
-
-    function loop() {
-        if (!audioCtx) return;
-        const vG = parseFloat(document.getElementById("vuGain").value);
-        const sG = parseFloat(document.getElementById("scopeGain").value);
-        gainNode.gain.value = Math.pow(10, (vG - 20) / 20);
-        document.getElementById("vuVal").innerText = (vG-20>=0?"+":"")+(vG-20)+" dB";
-        document.getElementById("scopeVal").innerText = "x" + sG.toFixed(1);
-
-        anaL.getFloatTimeDomainData(bufL); anaR.getFloatTimeDomainData(bufR);
-        const getRMS = (b, vBuf) => {
-            for(let i=0; i<b.length; i++) vBuf.push(b[i]*b[i]);
-            while(vBuf.length > vuWin) vBuf.shift();
-            return Math.sqrt(vBuf.reduce((a,b)=>a+b,0)/vBuf.length);
-        };
         
-        const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
-        const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
-
-        // 【速度微調整】0.30
-        currentL += (targetL - currentL) * 0.30;
-        currentR += (targetR - currentR) * 0.30;
+        // 【動的チャンネル判定】実際に掴んだストリームのハードウェア設定を読み取る
+        const audioTrack = stream.getAudioTracks()[0];
+        const settings = audioTrack.getSettings();
+        const activeChannels = settings.channelCount || 1; // 取得できない場合は安全に1(モノラル)扱い
         
-        document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
-        document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
-
-        scopeCtx.fillStyle = "rgba(0, 10, 0, 0.2)"; scopeCtx.fillRect(0, 0, 220, 220);
-        scopeCtx.strokeStyle = "#1a3a1a"; scopeCtx.beginPath(); scopeCtx.moveTo(110, 0); scopeCtx.lineTo(110, 220); scopeCtx.moveTo(0, 110); scopeCtx.lineTo(220, 110); scopeCtx.stroke();
-        scopeCtx.beginPath(); scopeCtx.strokeStyle = "#00ff66"; scopeCtx.lineWidth = 1.2;
+        statusInfo.innerText = `STATUS: CONNECTED (${activeChannels}ch Mode)`;
+        btn.innerText = "POWER ON"; btn.classList.add("on");
         
-        for(let i=0; i<bufL.length; i++) {
-            const x = (bufR[i] - bufL[i]) * sG * 40 + 110;
-            const y = 110 - (bufL[i] + bufR[i]) * sG * 40;
-            if(i===0) scopeCtx.moveTo(x, y); else scopeCtx.lineTo(x, y);
+        const src = audioCtx.createMediaStreamSource(stream);
+        const anaL = audioCtx.createAnalyser(), anaR = audioCtx.createAnalyser();
+        const gainNode = audioCtx.createGain();
+        
+        anaL.fftSize = anaR.fftSize = 1024;
+        src.connect(gainNode);
+
+        // 【ハイブリッド・ルーティング分岐】
+        if (activeChannels >= 2) {
+            // PCやiPadなど、しっかり2chステレオを掴めている時（従来通り）
+            const splitter = audioCtx.createChannelSplitter(2);
+            gainNode.connect(splitter);
+            splitter.connect(anaL, 0); 
+            splitter.connect(anaR, 1);
+        } else {
+            // Android Chromeなど、1chモノラルで引き戻された時（疑似ステレオ表示）
+            // 1つのソースから左右のAnalyser両方に「並列接続」してL/Rのメーターを同時に振らせる
+            gainNode.connect(anaL);
+            gainNode.connect(anaR);
         }
-        scopeCtx.stroke();
-        requestAnimationFrame(loop);
+
+        const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
+        const scopeCtx = document.getElementById("cvsScope").getContext("2d");
+        
+        // 平均化の窓幅 150ms（0.15）を完全維持
+        const vuWin = Math.floor(audioCtx.sampleRate * 0.15), vuBufL = [], vuBufR = [];
+
+        function loop() {
+            if (!audioCtx) return;
+            const vG = parseFloat(document.getElementById("vuGain").value);
+            const sG = parseFloat(document.getElementById("scopeGain").value);
+            gainNode.gain.value = Math.pow(10, (vG - 20) / 20);
+            document.getElementById("vuVal").innerText = (vG-20>=0?"+":"")+(vG-20)+" dB";
+            document.getElementById("scopeVal").innerText = "x" + sG.toFixed(1);
+
+            anaL.getFloatTimeDomainData(bufL); anaR.getFloatTimeDomainData(bufR);
+            const getRMS = (b, vBuf) => {
+                for(let i=0; i<b.length; i++) vBuf.push(b[i]*b[i]);
+                while(vBuf.length > vuWin) vBuf.shift();
+                return Math.sqrt(vBuf.reduce((a,b)=>a+b,0)/vBuf.length);
+            };
+            
+            const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
+            const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
+
+            // 【速度微調整】0.30
+            currentL += (targetL - currentL) * 0.30;
+            currentR += (targetR - currentR) * 0.30;
+            
+            document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
+            document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
+
+            scopeCtx.fillStyle = "rgba(0, 10, 0, 0.2)"; scopeCtx.fillRect(0, 0, 220, 220);
+            scopeCtx.strokeStyle = "#1a3a1a"; scopeCtx.beginPath(); scopeCtx.moveTo(110, 0); scopeCtx.lineTo(110, 220); scopeCtx.moveTo(0, 110); scopeCtx.lineTo(220, 110); scopeCtx.stroke();
+            scopeCtx.beginPath(); scopeCtx.strokeStyle = "#00ff66"; scopeCtx.lineWidth = 1.2;
+            
+            for(let i=0; i<bufL.length; i++) {
+                const x = (bufR[i] - bufL[i]) * sG * 40 + 110;
+                const y = 110 - (bufL[i] + bufR[i]) * sG * 40;
+                if(i===0) scopeCtx.moveTo(x, y); else scopeCtx.lineTo(x, y);
+            }
+            scopeCtx.stroke();
+            requestAnimationFrame(loop);
+        }
+        loop();
+        
+    } catch(e) {
+        console.error("接続エラー:", e);
+        statusInfo.innerText = `STATUS: ERROR (${e.name})`;
     }
-    loop();
 };
 </script>
 </body>
