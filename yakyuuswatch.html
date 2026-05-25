@@ -124,6 +124,25 @@
         const bgLayer = document.getElementById('bg-wipe-layer'), uraText = document.getElementById('ura-text');
         const resetBtn = document.getElementById('reset-btn'), startStopBtn = document.getElementById('start-stop-btn');
 
+        // Wake Lock 関連の処理
+        let wakeLock = null;
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {}
+        };
+
+        // 初回操作時に Wake Lock を有効にする
+        document.body.addEventListener('pointerdown', () => { 
+            if (!wakeLock) requestWakeLock(); 
+        }, { once: true });
+
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
+        });
+
         function handleStartStop(e) {
             if (e) e.preventDefault();
             if (!swRunning) {
@@ -183,7 +202,6 @@
             
             const totalSecondsNow = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
             
-            // 🌟４か所の時間帯をすべて網羅！
             const isInRange1 = (totalSecondsNow >= (0 * 3600 + 25 * 60 + 30) && totalSecondsNow <= (0 * 3600 + 26 * 60 + 2));
             const isInRange2 = (totalSecondsNow >= (18 * 3600 + 2 * 60 + 30) && totalSecondsNow <= (18 * 3600 + 3 * 60 + 2));
             const isInRange3 = (totalSecondsNow >= (18 * 3600 + 17 * 60 + 30) && totalSecondsNow <= (18 * 3600 + 18 * 60 + 2));
