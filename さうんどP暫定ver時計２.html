@@ -40,6 +40,15 @@
             border-radius: 50%; border: 3px solid #00796B; 
             position: relative; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
             display: flex; align-items: center; justify-content: center;
+            z-index: 110;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        /* 🌟大画面モード時にレバーの円を黒くする専用のCSSクラス */
+        #mode-selector.large-dark-lever {
+            background: #000000 !important;
+            border-color: #555555 !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
 
         #lever-knob { 
@@ -127,15 +136,14 @@
         /* 巨大画面モード専用のスタイル */
         #large-sw-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: var(--lcd-bg); z-index: 100;
+            background-color: #000000; z-index: 100;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             box-sizing: border-box; cursor: pointer;
             transition: background-color 0.08s ease;
         }
 
-        /* 大画面タップ時に画面全体を「ぐわっ」と凹ませるアニメーション用クラス */
         #large-sw-overlay.active-press {
-            background-color: #b0c9c5;
+            background-color: #1a1a1a;
         }
 
         #large-time-container {
@@ -145,57 +153,56 @@
             transition: transform 0.06s ease-out;
         }
         
-        /* タップ中に数字部分を少しだけ奥に縮小させて凹みを表現 */
         #large-sw-overlay.active-press #large-time-container {
             transform: rotate(90deg) scale(0.94);
         }
 
         #large-main-time {
-            font-size: 8.5rem; 
+            font-size: 11rem; 
             font-weight: 700; font-variant-numeric: tabular-nums;
-            color: var(--text-standard); letter-spacing: 2px; 
+            color: #FFFFFF; letter-spacing: 2px; 
             text-shadow: 0 0 0px rgba(0,0,0,0);
             transition: text-shadow 0.06s ease;
         }
         
         #large-sw-overlay.active-press #large-main-time {
-            text-shadow: 2px 2px 5px rgba(0, 47, 40, 0.2);
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);
         }
 
         #large-mode-title {
-            font-size: 1.1rem; font-weight: 800; color: #00796B; opacity: 0.5;
+            font-size: 1.1rem; font-weight: 800; color: #FFFFFF; opacity: 0.6;
             letter-spacing: 4px; text-align: center; margin-bottom: 20px;
         }
 
         #large-reset-btn {
-            position: absolute; top: 25px; left: 25px; 
-            width: 70px; height: 35px; background: rgba(0, 77, 64, 0.15);
-            border: 1.5px solid #00796B; border-radius: 8px;
-            color: var(--text-standard); font-size: 0.75rem; font-weight: bold;
-            display: flex; align-items: center; justify-content: center;
-            z-index: 110; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            transition: transform 0.05s;
-        }
-        #large-reset-btn:active { background: rgba(0, 77, 64, 0.3); transform: scale(0.92); }
-
-        #large-lever-btn {
             position: absolute; bottom: 25px; right: 25px; 
-            padding: 8px 14px; background: linear-gradient(145deg, #80CBC4, #4DB6AC);
-            border: 2px solid #00796B; border-radius: 20px;
-            color: white; font-size: 0.75rem; font-weight: bold;
-            z-index: 110; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-            transition: transform 0.05s;
+            width: 70px; height: 35px; background: rgba(255, 255, 255, 0.1);
+            border: 1.5px solid #FFFFFF; border-radius: 8px;
+            color: #FFFFFF; font-size: 0.75rem; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 110; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            transition: transform 0.05s, background-color 0.05s;
         }
-        #large-lever-btn:active { transform: scale(0.92); }
+        #large-reset-btn:active { background: rgba(255, 255, 255, 0.25); transform: scale(0.92); }
+
+        .large-lever-positioner {
+            position: absolute; top: 25px; left: 25px;
+            width: 80px; height: 80px;
+            z-index: 120;
+        }
     </style>
 </head>
 <body>
 
+    <div class="large-lever-positioner">
+        <div id="mode-selector" onclick="cycleMode()">
+            <div id="lever-knob"></div>
+        </div>
+    </div>
+
     <div class="console" id="normal-console">
         <div class="top-row">
-            <div id="mode-selector" onclick="cycleMode()">
-                <div id="lever-knob"></div>
-            </div>
+            <div style="width: 80px; height: 80px; pointer-events: none;"></div>
             <button id="reset-btn" onclick="handleReset()">RESET</button>
             <button id="start-stop-btn" onclick="handleStartStop()">START<br>STOP</button>
         </div>
@@ -245,9 +252,7 @@
         </div>
     </div>
 
-    <!-- 巨大画面モード専用のオーバーレイ -->
     <div id="large-sw-overlay" class="hidden" onmousedown="largeScreenPressStart(event)" ontouchstart="largeScreenPressStart(event)">
-        <div id="large-lever-btn" onclick="exitLargeMode(event)">LEVER</div>
         <div id="large-reset-btn" onclick="largeResetTapped(event)">RESET</div>
 
         <div id="large-time-container">
@@ -265,6 +270,7 @@
         let inputs = { 'CALC': { h: "", m: "", s: "" }, 'TC': { h: "", m: "", s: "" }, 'SW': { h: "", m: "", s: "" } };
         
         const lever = document.getElementById('lever-knob');
+        const modeSelector = document.getElementById('mode-selector'); // 🌟レバー土台の要素を取得
         const modeIndicator = document.getElementById('mode-indicator');
         const mainDisplay = document.getElementById('main-time');
         const tcDisplay = document.getElementById('tc-val');
@@ -284,9 +290,11 @@
         function setMode(m) {
             currentMode = m;
             
+            // 🌟大画面モード（LARGE）の時だけ、丸い部分に黒色用クラスを追加する
             if (m === 'LARGE') {
                 normalConsole.classList.add('hidden');
                 largeOverlay.classList.remove('hidden');
+                modeSelector.classList.add('large-dark-lever'); // 黒くする
                 
                 let swIn = inputs['SW'];
                 if (!swRunning && (swIn.h || swIn.m || swIn.s)) {
@@ -296,6 +304,7 @@
             } else {
                 normalConsole.classList.remove('hidden');
                 largeOverlay.classList.add('hidden');
+                modeSelector.classList.remove('large-dark-lever'); // 元のミント色に戻す
             }
 
             if (m === 'CALC') { lever.style.transform = 'rotate(-45deg)'; modeIndicator.innerText = 'CALC'; }
@@ -324,22 +333,20 @@
             if (currentMode === 'SW' && !swRunning) { swElapsedMs = 0; clearModeInput('SW'); updateDisplay(); }
         }
 
-        // 🌟画面が「ぐわっ」と凹むイベント制御（指を離した判定に変更）
         function largeScreenPressStart(e) {
-            if (e.target.id === 'large-lever-btn' || e.target.id === 'large-reset-btn') return;
+            if (e.target.id === 'large-reset-btn' || e.target.closest('.large-lever-positioner')) return;
             
             largeOverlay.classList.add('active-press');
 
             const upEvent = e.type === 'touchstart' ? 'touchend' : 'mouseup';
             const handleRelease = () => {
                 largeOverlay.classList.remove('active-press');
-                largeScreenReleased(); // 指が離れた瞬間にスタート処理を呼ぶよ！
+                largeScreenReleased();
                 window.removeEventListener(upEvent, handleRelease);
             };
             window.addEventListener(upEvent, handleRelease);
         }
 
-        // 🌟指を離したときのスタート判定（ストップはしない仕様へ変更！）
         function largeScreenReleased() {
             if (!swRunning) {
                 swRunning = true;
@@ -350,7 +357,6 @@
                 }, 10);
                 updateDisplay();
             }
-            // すでに動いている（swRunning === true）ときは、画面を叩いても何もしない（ストップしない）よ！
         }
 
         function largeResetTapped(e) {
@@ -513,8 +519,9 @@
         }
 
         function formatTime(ts) { 
-            let h = Math.floor(Math.abs(ts)/3600), m = Math.floor((Math.abs(ts)%3600)/60), s = Math.abs(ts)%60; 
-            return (ts<0?"-":"")+(h>0?h+":"+String(m).padStart(2,'0')+"'"+String(s).padStart(2,'0')+'"':(m>0?m+"'"+String(s).padStart(2,'0')+'"':s+'"')); 
+            let h = Math.floor(Math.abs(ts)/3600), s = Math.abs(ts)%60; 
+            let m_fixed = Math.floor((Math.abs(ts)%3600)/60);
+            return (ts<0?"-":"")+(h>0?h+":"+String(m_fixed).padStart(2,'0')+"'"+String(s).padStart(2,'0')+'"':(m_fixed>0?m_fixed+"'"+String(s).padStart(2,'0')+'"':s+'"')); 
         }
 
         function updateRealTime() {
