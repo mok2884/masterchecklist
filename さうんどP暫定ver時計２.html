@@ -157,24 +157,13 @@
             transform: rotate(90deg) scale(0.94);
         }
 
-     #large-main-time {
-    font-size: 11rem;
-    font-weight: 700; 
-    
-    /* 幅を揃えるための最強の呪文だよ！ */
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum"; 
-    
-    color: #FFFFFF;
-    letter-spacing: 0px; /* ここで微調整するよ */
-    text-shadow: 0 0 0px rgba(0,0,0,0);
-    transition: text-shadow 0.06s ease;
-    
-    /* 念のため、幅を固定する指定を追加するよっ！ */
-    width: 100%;
-    text-align: center;
-    font-family: monospace; /* 等幅フォントを指定すると、一番確実に「うにょん」が消えるよ！ */
-}
+        #large-main-time {
+            font-size: 11rem; 
+            font-variant-numeric: tabular-nums;
+            color: #FFFFFF; letter-spacing: 2px; 
+            text-shadow: 0 0 0px rgba(0,0,0,0);
+            transition: text-shadow 0.06s ease;
+        }
         
         #large-sw-overlay.active-press #large-main-time {
             text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);
