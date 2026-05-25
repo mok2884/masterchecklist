@@ -1,262 +1,446 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
 <meta name="apple-mobile-web-app-capable" content="yes">
+
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-<title>Mobile Loudness Meter</title>
+<title>Mobile VU Meter</title>
 
 <style>
 
-html, body{
-    margin:0;
-    padding:0;
-    background:#050505;
-    overflow:hidden;
-    touch-action:none;
-    font-family:Arial,sans-serif;
-    color:#fff;
-}
-
 body{
+    background-color:#050505;
+    margin:0;
     display:flex;
-    justify-content:center;
+    flex-direction:column;
     align-items:center;
-    height:100vh;
+    justify-content:center;
+    min-height:100vh;
+    font-family:sans-serif;
+    overflow:hidden;
+    touch-action:manipulation;
 }
 
 .console{
-    width:100%;
-    max-width:430px;
-    height:100vh;
-    box-sizing:border-box;
-    padding:14px;
-    display:flex;
-    flex-direction:column;
-    gap:14px;
-    background:#111;
-}
-
-.top{
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-}
-
-select{
-    width:100%;
+    background:#1a1a1a;
     padding:12px;
-    background:#222;
-    color:#fff;
-    border:none;
-    border-radius:10px;
-    font-size:16px;
-}
-
-button{
-    width:100%;
-    padding:14px;
-    border:none;
     border-radius:12px;
-    background:#333;
-    color:white;
-    font-size:18px;
-    font-weight:bold;
-}
-
-button.on{
-    background:#cc0000;
-}
-
-.mainMeter{
-    flex:1;
+    border:2px solid #333;
     display:flex;
     flex-direction:column;
     align-items:center;
-    justify-content:center;
-    gap:18px;
+    gap:12px;
+    width:100%;
+    max-width:100vw;
+    box-sizing:border-box;
 }
 
-.lufs{
-    font-size:72px;
-    font-weight:bold;
-    line-height:1;
-    letter-spacing:-3px;
+.display-row{
+    display:flex;
+    gap:8px;
+    align-items:flex-end;
+    justify-content:center;
+    width:100%;
 }
 
 .unit{
-    font-size:26px;
-    color:#aaa;
-}
-
-.barWrap{
-    width:100%;
-    height:36px;
-    background:#222;
-    border-radius:18px;
-    overflow:hidden;
-    border:1px solid #333;
-}
-
-.bar{
-    width:0%;
-    height:100%;
-    background:linear-gradient(to right,#00aa44,#99ff00,#ffff00,#ff6600,#ff0000);
-    transition:width 0.08s linear;
-}
-
-.row{
     display:flex;
-    gap:10px;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
 }
 
-.small{
-    flex:1;
-    background:#1a1a1a;
-    border-radius:12px;
-    padding:12px;
-    text-align:center;
-}
-
-.smallLabel{
-    color:#888;
-    font-size:14px;
-}
-
-.smallValue{
-    font-size:28px;
-    margin-top:4px;
+.label{
+    color:#eee;
     font-weight:bold;
-}
-
-.scopeWrap{
-    width:100%;
-    height:220px;
-    background:#000;
-    border:1px solid #333;
-    border-radius:12px;
-    position:relative;
-    overflow:hidden;
-}
-
-canvas{
-    width:100%;
-    height:100%;
-}
-
-.status{
-    text-align:center;
-    color:#0f0;
-    font-size:14px;
-}
-
-.footer{
-    text-align:center;
-    color:#666;
     font-size:12px;
 }
 
+.meter{
+    position:relative;
+    width:31vw;
+    max-width:280px;
+    aspect-ratio:280 / 150;
+    background-color:#fdfae1;
+    overflow:hidden;
+    border-radius:4px;
+    border:1px solid #444;
+}
+
+.scope{
+    position:relative;
+    width:28vw;
+    max-width:220px;
+    aspect-ratio:1 / 1;
+    background-color:#000;
+    border:1px solid #444;
+    border-radius:4px;
+}
+
+.needle{
+    position:absolute;
+    left:50%;
+    bottom:-13%;
+    width:2px;
+    height:92%;
+    background:#111;
+    transform-origin:bottom center;
+    z-index:10;
+}
+
+.controls{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:12px;
+    color:#aaa;
+    width:100%;
+}
+
+.knob-group{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:5px;
+    font-size:11px;
+}
+
+select{
+    background:#333;
+    color:#fff;
+    border:1px solid #555;
+    padding:10px;
+    border-radius:4px;
+    width:90vw;
+    max-width:300px;
+    font-size:16px;
+}
+
+input[type=range]{
+    width:120px;
+    cursor:pointer;
+}
+
+#btn{
+    padding:12px 24px;
+    cursor:pointer;
+    font-weight:bold;
+    border-radius:4px;
+    border:none;
+    background:#444;
+    color:white;
+    font-size:16px;
+}
+
+#btn.on{
+    background:#d00;
+}
+
+canvas{
+    position:absolute;
+    top:0;
+    left:0;
+    z-index:5;
+    width:100%;
+    height:100%;
+}
+
+@media (max-width: 900px){
+
+    .display-row{
+        gap:4px;
+    }
+
+    .meter{
+        width:30vw;
+    }
+
+    .scope{
+        width:27vw;
+    }
+
+}
+
 </style>
+
 </head>
+
 <body>
 
 <div class="console">
 
-    <div class="top">
+    <div class="knob-group">
+
+        <label style="color:#0f0">
+            SELECT INPUT DEVICE:
+        </label>
 
         <select id="micSelect">
-            <option value="">INPUT DEVICE</option>
+            <option value="">
+                -- Device List --
+            </option>
         </select>
-
-        <button id="btn">
-            START
-        </button>
 
     </div>
 
-    <div class="mainMeter">
+    <div class="display-row">
 
-        <div class="lufs" id="lufsVal">
-            -∞
+        <div class="unit">
+
+            <div class="label">
+                L-VU
+            </div>
+
+            <div class="meter">
+
+                <canvas
+                id="cvsL"
+                width="280"
+                height="150"></canvas>
+
+                <div
+                id="ndlL"
+                class="needle"></div>
+
+            </div>
+
         </div>
 
         <div class="unit">
-            LUFS
+
+            <div class="label">
+                R-VU
+            </div>
+
+            <div class="meter">
+
+                <canvas
+                id="cvsR"
+                width="280"
+                height="150"></canvas>
+
+                <div
+                id="ndlR"
+                class="needle"></div>
+
+            </div>
+
         </div>
 
-        <div class="barWrap">
-            <div class="bar" id="loudBar"></div>
+        <div class="unit">
+
+            <div class="label">
+                PHASE SCOPE
+            </div>
+
+            <div class="scope">
+
+                <canvas
+                id="cvsScope"
+                width="220"
+                height="220"></canvas>
+
+            </div>
+
         </div>
 
     </div>
 
-    <div class="row">
+    <div class="controls">
 
-        <div class="small">
-            <div class="smallLabel">PEAK</div>
-            <div class="smallValue" id="peakVal">-∞</div>
+        <div class="knob-group">
+
+            <label>
+                VU GAIN
+            </label>
+
+            <input
+            type="range"
+            id="vuGain"
+            min="0"
+            max="40"
+            value="20">
+
+            <span id="vuVal">
+                0 dB
+            </span>
+
         </div>
 
-        <div class="small">
-            <div class="smallLabel">MODE</div>
-            <div class="smallValue" id="modeVal">--</div>
+        <div class="knob-group">
+
+            <label>
+                SCOPE SENS.
+            </label>
+
+            <input
+            type="range"
+            id="scopeGain"
+            min="0.1"
+            max="5.0"
+            step="0.1"
+            value="1.0">
+
+            <span id="scopeVal">
+                x1.0
+            </span>
+
         </div>
 
     </div>
 
-    <div class="scopeWrap">
-        <canvas id="scope" width="400" height="220"></canvas>
-    </div>
-
-    <div class="status" id="status">
-        READY
-    </div>
-
-    <div class="footer">
-        MOBILE AUDIO METER
-    </div>
+    <button id="btn">
+        POWER OFF
+    </button>
 
 </div>
 
 <script>
 
-const micSelect = document.getElementById("micSelect");
-const btn = document.getElementById("btn");
+const VU_W = 280;
+const VU_H = 150;
 
-const lufsVal = document.getElementById("lufsVal");
-const loudBar = document.getElementById("loudBar");
-const peakVal = document.getElementById("peakVal");
-const modeVal = document.getElementById("modeVal");
-const statusText = document.getElementById("status");
+const CX = 140;
+const CY = 170;
+const R_BASE = 125;
 
-const scope = document.getElementById("scope");
-const sctx = scope.getContext("2d");
+const START_DEG = 145;
+const END_DEG = 35;
+
+const V_MIN = Math.pow(10,-20/20);
+const V_MAX = Math.pow(10,3/20);
+
+function dbToAngle(db){
+
+    const v = Math.pow(10,db/20);
+
+    const norm =
+    (v - V_MIN) /
+    (V_MAX - V_MIN);
+
+    return START_DEG +
+    (norm * (END_DEG - START_DEG));
+
+}
+
+function drawVUBase(canvasId){
+
+    const ctx =
+    document
+    .getElementById(canvasId)
+    .getContext("2d");
+
+    ctx.clearRect(0,0,VU_W,VU_H);
+
+    const mainMarks =
+    [-20,-10,-7,-5,-3,-2,-1,0,1,2,3];
+
+    for(let v=-20; v<=3; v+=0.25){
+
+        const rad =
+        (-dbToAngle(v))
+        * Math.PI / 180;
+
+        const isRed = (v >= 0);
+
+        const isMain =
+        mainMarks.includes(v);
+
+        ctx.beginPath();
+
+        ctx.strokeStyle =
+        isRed ? "#d00" : "#222";
+
+        ctx.lineWidth =
+        isMain ? 2.5 : 0.8;
+
+        let tLen =
+        isMain
+        ? (isRed ? 15 : 10)
+        : 5;
+
+        ctx.moveTo(
+            CX + Math.cos(rad)*R_BASE,
+            CY + Math.sin(rad)*R_BASE
+        );
+
+        ctx.lineTo(
+            CX + Math.cos(rad)*(R_BASE+tLen),
+            CY + Math.sin(rad)*(R_BASE+tLen)
+        );
+
+        ctx.stroke();
+
+        if(
+            [-20,-10,-7,-5,-3,0,3]
+            .includes(v)
+        ){
+
+            ctx.font =
+            "bold 15px Arial";
+
+            ctx.fillStyle =
+            isRed ? "#d00" : "#222";
+
+            ctx.textAlign = "center";
+
+            ctx.fillText(
+                Math.abs(v),
+
+                CX + Math.cos(rad)*(R_BASE+28),
+
+                CY + Math.sin(rad)*(R_BASE+28)+5
+            );
+
+        }
+
+    }
+
+}
+
+drawVUBase("cvsL");
+drawVUBase("cvsR");
+
+const micSelect =
+document.getElementById('micSelect');
+
+const btn =
+document.getElementById("btn");
 
 let audioCtx;
 let stream;
-let analyserL;
-let analyserR;
 
-let monoMode = false;
-
-let loudnessMemory = -60;
+let currentL = START_DEG;
+let currentR = START_DEG;
 
 async function getDevices(){
 
-    const devices = await navigator.mediaDevices.enumerateDevices();
+    const devices =
+    await navigator
+    .mediaDevices
+    .enumerateDevices();
 
-    micSelect.innerHTML = "";
+    micSelect.innerHTML = '';
 
     devices
-    .filter(d => d.kind === "audioinput")
+    .filter(d => d.kind === 'audioinput')
     .forEach(d => {
 
-        const opt = document.createElement("option");
+        const opt =
+        document.createElement('option');
 
         opt.value = d.deviceId;
-        opt.text = d.label || "INPUT";
+
+        opt.text =
+        d.label ||
+        `Microphone`;
 
         micSelect.appendChild(opt);
 
@@ -264,27 +448,17 @@ async function getDevices(){
 
 }
 
-async function initDevices(){
+navigator
+.mediaDevices
+.getUserMedia({ audio:true })
+.then(s => {
 
-    try{
+    s.getTracks()
+    .forEach(t => t.stop());
 
-        const tmp = await navigator.mediaDevices.getUserMedia({
-            audio:true
-        });
+    getDevices();
 
-        tmp.getTracks().forEach(t => t.stop());
-
-        await getDevices();
-
-    }catch(e){
-
-        console.log(e);
-
-    }
-
-}
-
-initDevices();
+});
 
 btn.onclick = async () => {
 
@@ -294,219 +468,319 @@ btn.onclick = async () => {
 
         audioCtx = null;
 
-        btn.classList.remove("on");
-        btn.innerText = "START";
+        btn.innerText = "POWER OFF";
 
-        statusText.innerText = "STOPPED";
+        btn.classList.remove("on");
 
         return;
+
     }
+
+    audioCtx =
+    new (
+        window.AudioContext ||
+        window.webkitAudioContext
+    )();
+
+    await audioCtx.resume();
+
+    const constraints = {
+
+        audio:{
+
+            deviceId:
+            micSelect.value
+            ? { exact: micSelect.value }
+            : undefined,
+
+            channelCount:{ ideal:2 },
+
+            echoCancellation:false,
+            noiseSuppression:false,
+            autoGainControl:false
+
+        }
+
+    };
 
     try{
 
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-        await audioCtx.resume();
-
-        const constraints = {
-
-            audio:{
-
-                deviceId: micSelect.value
-                    ? { exact: micSelect.value }
-                    : undefined,
-
-                channelCount:{ ideal:2 },
-
-                echoCancellation:false,
-                noiseSuppression:false,
-                autoGainControl:false
-
-            }
-
-        };
-
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-        const settings = stream.getAudioTracks()[0].getSettings();
-
-        console.log(settings);
-
-        monoMode = settings.channelCount === 1;
-
-        modeVal.innerText = monoMode ? "MONO" : "ST";
-
-        statusText.innerText =
-            monoMode
-            ? "MONO INPUT"
-            : "STEREO INPUT";
-
-        const src = audioCtx.createMediaStreamSource(stream);
-
-        const splitter = audioCtx.createChannelSplitter(2);
-
-        analyserL = audioCtx.createAnalyser();
-        analyserR = audioCtx.createAnalyser();
-
-        analyserL.fftSize = 512;
-        analyserR.fftSize = 512;
-
-        src.connect(splitter);
-
-        splitter.connect(analyserL,0);
-        splitter.connect(analyserR,1);
-
-        btn.classList.add("on");
-        btn.innerText = "STOP";
-
-        draw();
+        stream =
+        await navigator
+        .mediaDevices
+        .getUserMedia(constraints);
 
     }catch(e){
 
-        console.log(e);
+        console.log(
+            "Stereo Retry"
+        );
 
-        statusText.innerText = "INPUT ERROR";
+        constraints.audio.channelCount =
+        { ideal:2 };
 
-    }
-
-};
-
-const bufL = new Float32Array(512);
-const bufR = new Float32Array(512);
-
-let lastFrame = 0;
-
-function draw(t=0){
-
-    if(!audioCtx) return;
-
-    requestAnimationFrame(draw);
-
-    if(t - lastFrame < 33) return;
-
-    lastFrame = t;
-
-    analyserL.getFloatTimeDomainData(bufL);
-
-    if(!monoMode){
-
-        analyserR.getFloatTimeDomainData(bufR);
-
-    }else{
-
-        bufR.set(bufL);
+        stream =
+        await navigator
+        .mediaDevices
+        .getUserMedia(constraints);
 
     }
 
-    let peak = 0;
-    let sum = 0;
+    const settings =
+    stream
+    .getAudioTracks()[0]
+    .getSettings();
 
-    for(let i=0;i<bufL.length;i++){
+    console.log(settings);
 
-        const l = bufL[i];
-        const r = bufR[i];
+    btn.innerText = "POWER ON";
 
-        const mono = (l+r)*0.5;
+    btn.classList.add("on");
 
-        const abs = Math.abs(mono);
+    const src =
+    audioCtx
+    .createMediaStreamSource(stream);
 
-        if(abs > peak) peak = abs;
+    const splitter =
+    audioCtx
+    .createChannelSplitter(2);
 
-        sum += mono*mono;
+    const anaL =
+    audioCtx.createAnalyser();
 
-    }
+    const anaR =
+    audioCtx.createAnalyser();
 
-    const rms = Math.sqrt(sum / bufL.length);
+    const gainNode =
+    audioCtx.createGain();
 
-    let db = 20 * Math.log10(rms + 0.0000001);
+    anaL.fftSize = 512;
+    anaR.fftSize = 512;
 
-    let peakDb = 20 * Math.log10(peak + 0.0000001);
+    src.connect(gainNode);
 
-    db = Math.max(-60,Math.min(0,db));
+    gainNode.gain.value = 1;
 
-    peakDb = Math.max(-60,Math.min(6,peakDb));
+    gainNode.connect(splitter);
 
-    loudnessMemory += (db - loudnessMemory) * 0.08;
+    splitter.connect(anaL,0);
+    splitter.connect(anaR,1);
 
-    lufsVal.innerText = loudnessMemory.toFixed(1);
+    const bufL =
+    new Float32Array(512);
 
-    peakVal.innerText = peakDb.toFixed(1);
+    const bufR =
+    new Float32Array(512);
 
-    const percent = ((loudnessMemory + 60) / 60) * 100;
+    const scopeCtx =
+    document
+    .getElementById("cvsScope")
+    .getContext("2d");
 
-    loudBar.style.width = percent + "%";
+    const vuWin =
+    Math.floor(
+        audioCtx.sampleRate * 0.15
+    );
 
-    drawScope();
+    const vuBufL = [];
+    const vuBufR = [];
 
-}
-
-function drawScope(){
-
-    sctx.fillStyle = "rgba(0,0,0,0.15)";
-    sctx.fillRect(0,0,400,220);
-
-    sctx.strokeStyle = "#113311";
-
-    sctx.beginPath();
-
-    sctx.moveTo(200,0);
-    sctx.lineTo(200,220);
-
-    sctx.moveTo(0,110);
-    sctx.lineTo(400,110);
-
-    sctx.stroke();
-
-    sctx.beginPath();
-
-    sctx.strokeStyle = "#00ff66";
-
-    sctx.lineWidth = 1;
-
-    let lastX = 200;
+    let lastX = 110;
     let lastY = 110;
 
-    for(let i=0;i<bufL.length;i+=4){
+    let lastFrame = 0;
 
-        let x,y;
+    function loop(t=0){
 
-        if(monoMode){
+        if(!audioCtx) return;
 
-            x = (i / bufL.length) * 400;
+        requestAnimationFrame(loop);
 
-            y = 110 - (bufL[i] * 80);
+        if(t - lastFrame < 33) return;
 
-        }else{
+        lastFrame = t;
+
+        const vG =
+        parseFloat(
+            document
+            .getElementById("vuGain")
+            .value
+        );
+
+        const sG =
+        parseFloat(
+            document
+            .getElementById("scopeGain")
+            .value
+        );
+
+        gainNode.gain.value =
+        Math.pow(
+            10,
+            (vG - 20) / 20
+        );
+
+        document
+        .getElementById("vuVal")
+        .innerText =
+        (vG-20>=0?"+":"")
+        +(vG-20)
+        +" dB";
+
+        document
+        .getElementById("scopeVal")
+        .innerText =
+        "x"+sG.toFixed(1);
+
+        anaL.getFloatTimeDomainData(bufL);
+        anaR.getFloatTimeDomainData(bufR);
+
+        const getRMS = (b,vBuf) => {
+
+            for(let i=0;i<b.length;i++){
+
+                vBuf.push(b[i]*b[i]);
+
+            }
+
+            while(vBuf.length > vuWin){
+
+                vBuf.shift();
+
+            }
+
+            return Math.sqrt(
+                vBuf.reduce((a,b)=>a+b,0)
+                / vBuf.length
+            );
+
+        };
+
+        const targetL =
+        dbToAngle(
+            Math.max(
+                -20,
+                Math.min(
+                    3,
+                    20*Math.log10(
+                        getRMS(
+                            bufL,
+                            vuBufL
+                        ) || 0.00001
+                    ) + 12
+                )
+            )
+        );
+
+        const targetR =
+        dbToAngle(
+            Math.max(
+                -20,
+                Math.min(
+                    3,
+                    20*Math.log10(
+                        getRMS(
+                            bufR,
+                            vuBufR
+                        ) || 0.00001
+                    ) + 12
+                )
+            )
+        );
+
+        currentL +=
+        (targetL-currentL)*0.145;
+
+        currentR +=
+        (targetR-currentR)*0.145;
+
+        document
+        .getElementById("ndlL")
+        .style.transform =
+        `rotate(${90-currentL}deg)`;
+
+        document
+        .getElementById("ndlR")
+        .style.transform =
+        `rotate(${90-currentR}deg)`;
+
+        scopeCtx.fillStyle =
+        "rgba(0,10,0,0.18)";
+
+        scopeCtx.fillRect(
+            0,
+            0,
+            220,
+            220
+        );
+
+        scopeCtx.strokeStyle =
+        "#1a3a1a";
+
+        scopeCtx.beginPath();
+
+        scopeCtx.moveTo(110,0);
+        scopeCtx.lineTo(110,220);
+
+        scopeCtx.moveTo(0,110);
+        scopeCtx.lineTo(220,110);
+
+        scopeCtx.stroke();
+
+        scopeCtx.beginPath();
+
+        scopeCtx.strokeStyle =
+        "#00ff66";
+
+        scopeCtx.lineWidth = 1.2;
+
+        for(let i=0;i<bufL.length;i+=4){
 
             const rawX =
-                (bufR[i] - bufL[i]) * 80 + 200;
+            (bufR[i]-bufL[i])
+            * sG * 40 + 110;
 
             const rawY =
-                110 - (bufL[i] + bufR[i]) * 40;
+            110 -
+            (bufL[i]+bufR[i])
+            * sG * 40;
 
-            x = lastX + (rawX - lastX) * 0.35;
-            y = lastY + (rawY - lastY) * 0.35;
+            const targetX =
+            lastX +
+            (rawX-lastX)*0.4;
+
+            const targetY =
+            lastY +
+            (rawY-lastY)*0.4;
+
+            if(i===0){
+
+                scopeCtx.moveTo(
+                    targetX,
+                    targetY
+                );
+
+            }else{
+
+                scopeCtx.lineTo(
+                    targetX,
+                    targetY
+                );
+
+            }
+
+            lastX = targetX;
+            lastY = targetY;
 
         }
 
-        if(i===0){
-
-            sctx.moveTo(x,y);
-
-        }else{
-
-            sctx.lineTo(x,y);
-
-        }
-
-        lastX = x;
-        lastY = y;
+        scopeCtx.stroke();
 
     }
 
-    sctx.stroke();
+    loop();
 
-}
+};
 
 </script>
 
