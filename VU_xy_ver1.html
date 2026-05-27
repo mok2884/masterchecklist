@@ -50,6 +50,25 @@ canvas { position: absolute; top: 0; left: 0; z-index: 5; }
 </div>
 
 <script>
+// Wake Lock 関連の処理
+let wakeLock = null;
+const requestWakeLock = async () => {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+        }
+    } catch (err) {}
+};
+
+// 初回操作時に Wake Lock を有効にする
+document.body.addEventListener('pointerdown', () => { 
+    if (!wakeLock) requestWakeLock(); 
+}, { once: true });
+
+document.addEventListener('visibilitychange', () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
+});
+
 const VU_W = 280, VU_H = 150, CX = 140, CY = 170, R_BASE = 125;
 const START_DEG = 145, END_DEG = 35;
 const V_MIN = Math.pow(10, -20/20), V_MAX = Math.pow(10, 3/20);
@@ -142,7 +161,6 @@ btn.onclick = async () => {
     
     const vuWin = Math.floor(audioCtx.sampleRate * 0.15), vuBufL = [], vuBufR = [];
 
-    // リサージュの急激な変化（跳ね）を丸めるためのローパス用変数
     let lastX = 110, lastY = 110;
 
     function loop() {
@@ -163,29 +181,22 @@ btn.onclick = async () => {
         const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
         const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
 
-        // 【速度微調整】0.17 から、ほんの気持ちだけ重く「0.145」へ！
         currentL += (targetL - currentL) * 0.145;
         currentR += (targetR - currentR) * 0.145;
         
         document.getElementById("ndlL").style.transform = `rotate(${90-currentL}deg)`;
         document.getElementById("ndlR").style.transform = `rotate(${90-currentR}deg)`;
 
-        // スコープの残像感を気持ち長めにして馴染ませる (0.2 -> 0.18)
         scopeCtx.fillStyle = "rgba(0, 10, 0, 0.18)"; scopeCtx.fillRect(0, 0, 220, 220);
         scopeCtx.strokeStyle = "#1a3a1a"; scopeCtx.beginPath(); scopeCtx.moveTo(110, 0); scopeCtx.lineTo(110, 220); scopeCtx.moveTo(0, 110); scopeCtx.lineTo(220, 110); scopeCtx.stroke();
         scopeCtx.beginPath(); scopeCtx.strokeStyle = "#00ff66"; scopeCtx.lineWidth = 1.2;
         
-        // 1024サンプルすべて描画すると重くて暴れるので、ステップを少し間引いて滑らかに描画
         for(let i=0; i<bufL.length; i+=2) {
             const rawX = (bufR[i] - bufL[i]) * sG * 40 + 110;
             const rawY = 110 - (bufL[i] + bufR[i]) * sG * 40;
-            
-            // 【リサージュゆるふわ化】前回の座標と0.4の割合でブレンドして、突発的な横跳ねを吸収
             const targetX = lastX + (rawX - lastX) * 0.4;
             const targetY = lastY + (rawY - lastY) * 0.4;
-            
             if(i===0) scopeCtx.moveTo(targetX, targetY); else scopeCtx.lineTo(targetX, targetY);
-            
             lastX = targetX;
             lastY = targetY;
         }
