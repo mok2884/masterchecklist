@@ -139,6 +139,11 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 11rem; font-family: 'DS-Digital', monospace;
             color: #FFFFFF;
+border: 4px solid #FFFFFF;      /* 白い枠線 */
+    border-radius: 20px;            /* 角を丸く */
+    padding: 35px 55px;             /* 枠と数字の間の余白 */
+    background: rgba(255, 255, 255, 0.05);
+
         }
         .digit {
     width: 80px;
@@ -148,12 +153,36 @@
    font-style: italic;
 color: #ff4500;
 }
-        .separator { width: 45px; text-align: right; display: inline-block; font-size: 0.8em; font-weight: bold; color: #ff0000;}
+        .separator { width: 45px; text-align: right; display: inline-block; font-size: 0.8em; font-weight: bold; color: #ff0000;
+padding-left: 6px;
+/* 2秒かけて、パッ、パッ、と切り替える */
+    
+animation: blink 1s infinite ease-in-out;
+}
+
+@keyframes blink {
+    0%   { color: #ff3333; } /* 点灯 */
+    50%  { color: #dd2222; } /* ほぼ消灯（完全な黒にすると違和感があるかもしれないから、少しだけ赤みを残してるよ） */
+    100% { color: #ff3333; } /* 点灯 */
+}
+
+}
 
         #large-mode-title {
             font-size: 1.1rem; font-weight: 800; color: #FFFFFF; opacity: 0.6;
             letter-spacing: 4px; text-align: center; margin-bottom: 20px;
         }
+#large-sub-label {
+           margin-top: 15px;      /* 枠との間隔を少し調整 */
+    color: #FFFFFF;
+    font-size: 1.2rem;
+    font-weight: bold;
+font-size: 2.2rem;
+    letter-spacing: 2px;
+    text-align: center;
+    opacity: 0.8;
+    width: 100%;           /* 幅を確保してセンター寄せを確実にする */
+}
         #large-reset-btn {
             position: absolute; bottom: 25px; right: 25px; width: 70px; height: 35px; background: rgba(255, 255, 255, 0.1);
             border: 1.5px solid #FFFFFF; border-radius: 8px; color: #FFFFFF; font-size: 0.75rem; font-weight: bold;
@@ -209,14 +238,14 @@ color: #ff4500;
     <div id="large-sw-overlay" class="hidden" onmousedown="largeScreenPressStart(event)" ontouchstart="largeScreenPressStart(event)">
         <div id="large-reset-btn" onclick="largeResetTapped(event)">RESET</div>
         <div id="large-time-container">
-            <div id="large-mode-title">LARGE STOPWATCH</div>
             <div id="large-main-time">
                 <span class="digit">0</span><span class="digit">0</span><span class="separator">:</span>
                 <span class="digit">0</span><span class="digit">0</span><span class="separator">:</span>
                 <span class="digit">0</span><span class="digit">0</span>
             </div>
+            
+            <div id="large-sub-label">REAL TIME / TIMER</div>
         </div>
-    </div>
 
     <script>
         // (JS部分はそのまま維持)
