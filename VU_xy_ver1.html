@@ -178,7 +178,7 @@ btn.onclick = async () => {
             return Math.sqrt(vBuf.reduce((a,b)=>a+b,0)/vBuf.length);
         };
         
-        const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 11)));
+        const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
         const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
 
         currentL += (targetL - currentL) * 0.145;
