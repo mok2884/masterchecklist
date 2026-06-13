@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Dante DVS Multi-Audio Console</title>
+<style>
+body { background-color: #0d0d0d; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; }
+.console { background: #1e1e1e; padding: 30px; border-radius: 16px; border: 2px solid #3a3a3a; box-shadow: 0 20px 40px rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; gap: 20px; }
+
+/* デバイス選択エリア（2つの別々のステレオDVS入力を指定！） */
+.device-selectors { display: flex; gap: 30px; background: #151515; padding: 15px 25px; border-radius: 8px; border: 1px solid #2d2d2d; }
+.select-group { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: #888; letter-spacing: 1px; }
+select { background: #2a2a2a; color: #fff; border: 1px solid #444; padding: 6px 10px; border-radius: 4px; width: 240px; font-weight: bold; font-size: 12px; }
+
+/* メーター配置 */
+.display-row { display: flex; gap: 25px; align-items: flex-end; background: #0a0a0a; padding: 25px; border-radius: 12px; border: 1px solid #222; }
+.meter-block { display: flex; gap: 15px; }
+.separator { width: 2px; background: #2a2a2a; height: 160px; align-self: center; }
+
+.unit { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.label { color: #888; font-weight: bold; font-size: 12px; letter-spacing: 1.5px; }
+.label.highlight { color: #00ff66; text-shadow: 0 0 8px rgba(0,255,102,0.3); }
+.meter { position: relative; width: 250px; height: 135px; background-color: #fcf9d9; overflow: hidden; border-radius: 4px; border: 1px solid #333; box-shadow: inset 0 0 10px rgba(0,0,0,0.2); }
+.scope { position: relative; width: 170px; height: 170px; background-color: #050505; border: 1px solid #333; border-radius: 4px; }
+.needle { position: absolute; top: 155px; left: 125px; width: 1.5px; height: 135px; background: #111; transform-origin: bottom center; margin-top: -135px; z-index: 10; transition: transform 0.05s ease-out; }
+
+.controls { display: flex; justify-content: center; gap: 40px; color: #888; width: 100%; margin-top: 5px; }
+.knob-group { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 11px; letter-spacing: 1px; }
+input[type=range] { width: 140px; cursor: pointer; accent-color: #444; }
+#btn { padding: 12px 50px; cursor: pointer; font-weight: bold; border-radius: 6px; border: none; background: #3a3a3a; color: #eee; font-size: 14px; letter-spacing: 1px; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+#btn.on { background: #cc0000; color: #fff; box-shadow: 0 0 15px rgba(204,0,0,0.4); }
+canvas { position: absolute; top: 0; left: 0; z-index: 5; }
+</style>
+</head>
+<body>
+<div class="console">
+    <div class="device-selectors">
+        <div class="select-group">
+            <label style="color:#00ff66; font-weight:bold;">VU 1 INPUT (ALL MIX):</label>
+            <select id="selectDevice1"><option value="">-- Select Dante 1-2 --</option></select>
+        </div>
+        <div class="select-group">
+            <label style="color:#00ff66; font-weight:bold;">VU 2 INPUT (NOISE):</label>
+            <select id="selectDevice2"><option value="">-- Select Dante 3-4 --</option></select>
+        </div>
+    </div>
+
+    <div class="display-row">
+        <div class="meter-block">
+            <div class="unit">
+                <div class="label">ALL MIX - L</div>
+                <div class="meter"><canvas id="cvsL1" width="250" height="135"></canvas><div id="ndlL1" class="needle"></div></div>
+            </div>
+            <div class="unit">
+                <div class="label">ALL MIX - R</div>
+                <div class="meter"><canvas id="cvsR1" width="250" height="135"></canvas><div id="ndlR1" class="needle"></div></div>
+            </div>
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="meter-block">
+            <div class="unit">
+                <div class="label">NOISE - L</div>
+                <div class="meter"><canvas id="cvsL2" width="250" height="135"></canvas><div id="ndlL2" class="needle"></div></div>
+            </div>
+            <div class="unit">
+                <div class="label">NOISE - R</div>
+                <div class="meter"><canvas id="cvsR2" width="250" height="135"></canvas><div id="ndlR2" class="needle"></div></div>
+            </div>
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="unit">
+            <div class="label highlight">PHASE SCOPE</div>
+            <div class="scope"><canvas id="cvsScope" width="170" height="170"></canvas></div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <div class="knob-group"><label>VU GAIN</label><input type="range" id="vuGain" min="0" max="40" value="20"><span id="vuVal">0 dB</span></div>
+        <div class="knob-group"><label>SCOPE SENS.</label><input type="range" id="scopeGain" min="0.1" max="5.0" step="0.1" value="1.0"><span id="scopeVal">x1.0</span></div>
+    </div>
+    <button id="btn">POWER OFF</button>
+</div>
+
+<script>
+let wakeLock = null;
+const requestWakeLock = async () => {
+    try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+};
+document.body.addEventListener('pointerdown', () => { if (!wakeLock) requestWakeLock(); }, { once: true });
+
+const VU_W = 250, VU_H = 135, CX = 125, CY = 155, R_BASE = 110;
+const START_DEG = 145, END_DEG = 35;
+const V_MIN = Math.pow(10, -20/20), V_MAX = Math.pow(10, 3/20);
+
+function dbToAngle(db){
+    const v = Math.pow(10, db/20);
+    const norm = (v - V_MIN)/(V_MAX - V_MIN);
+    return START_DEG + (norm * (END_DEG - START_DEG));
+}
+
+function drawVUBase(canvasId) {
+    const ctx = document.getElementById(canvasId).getContext("2d");
+    ctx.clearRect(0, 0, VU_W, VU_H);
+    const mainMarks = [-20, -10, -7, -5, -3, -2, -1, 0, 1, 2, 3];
+    for(let v = -20; v <= 3; v += 0.25) {
+        const rad = (-dbToAngle(v)) * Math.PI / 180;
+        const isRed = (v >= 0);
+        const isMain = mainMarks.includes(v);
+        ctx.beginPath();
+        ctx.strokeStyle = isRed ? "#cc0000" : "#2b2b2b";
+        ctx.lineWidth = isMain ? 2.2 : 0.7;
+        let tLen = isMain ? (isRed ? 11 : 8) : 4;
+        ctx.moveTo(CX + Math.cos(rad) * R_BASE, CY + Math.sin(rad) * R_BASE);
+        ctx.lineTo(CX + Math.cos(rad) * (R_BASE + tLen), CY + Math.sin(rad) * (R_BASE + tLen));
+        ctx.stroke();
+        if ([-20, -10, -7, -5, -3, 0, 3].includes(v)) {
+            ctx.font = "bold 12px sans-serif"; ctx.fillStyle = isRed ? "#cc0000" : "#2b2b2b"; ctx.textAlign = "center";
+            ctx.fillText(Math.abs(v), CX + Math.cos(rad)*(R_BASE+20), CY + Math.sin(rad)*(R_BASE+20)+4);
+        }
+    }
+}
+drawVUBase("cvsL1"); drawVUBase("cvsR1"); drawVUBase("cvsL2"); drawVUBase("cvsR2");
+
+const select1 = document.getElementById('selectDevice1');
+const select2 = document.getElementById('selectDevice2');
+const btn = document.getElementById("btn");
+let audioCtx;
+let stream1, stream2;
+let currentL1 = START_DEG, currentR1 = START_DEG;
+let currentL2 = START_DEG, currentR2 = START_DEG;
+
+async function initDevices() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    select1.innerHTML = '<option value="">-- Select Dante 1-2 --</option>';
+    select2.innerHTML = '<option value="">-- Select Dante 3-4 --</option>';
+    
+    devices.filter(d => d.kind === 'audioinput').forEach(d => {
+        const opt1 = document.createElement('option');
+        opt1.value = d.deviceId; opt1.text = d.label || `Device ${select1.length}`;
+        select1.appendChild(opt1);
+        
+        const opt2 = document.createElement('option');
+        opt2.value = d.deviceId; opt2.text = d.label || `Device ${select2.length}`;
+        select2.appendChild(opt2);
+    });
+}
+
+navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+    s.getTracks().forEach(t => t.stop());
+    initDevices();
+});
+
+btn.onclick = async () => {
+    if (audioCtx) {
+        if(audioCtx) { audioCtx.close(); audioCtx = null; }
+        btn.innerText = "POWER OFF"; btn.classList.remove("on"); return;
+    }
+    
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    btn.innerText = "POWER ON"; btn.classList.add("on");
+    
+    try {
+        // 1. 2つのDanteデバイスを個別にストリームとして取得
+        stream1 = await navigator.mediaDevices.getUserMedia({
+            audio: { deviceId: select1.value ? { exact: select1.value } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+        stream2 = await navigator.mediaDevices.getUserMedia({
+            audio: { deviceId: select2.value ? { exact: select2.value } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+    } catch (e) {
+        alert("デバイスの取得に失敗しました。選択を確認してください。");
+        if(audioCtx) { audioCtx.close(); audioCtx = null; }
+        btn.innerText = "POWER OFF"; btn.classList.remove("on"); return;
+    }
+    
+    // 2. 音源のソースを作成
+    const src1 = audioCtx.createMediaStreamSource(stream1);
+    const src2 = audioCtx.createMediaStreamSource(stream2);
+    
+    // 3. それぞれのルート専用のゲインノード（音量調整）を【別々に】作成
+    const gainNode1 = audioCtx.createGain();
+    const gainNode2 = audioCtx.createGain();
+    
+    // 4. L/Rに切り分けるスプリッターも【別々に】作成
+    const splitter1 = audioCtx.createChannelSplitter(2);
+    const splitter2 = audioCtx.createChannelSplitter(2);
+    
+    const anaL1 = audioCtx.createAnalyser(), anaR1 = audioCtx.createAnalyser();
+    const anaL2 = audioCtx.createAnalyser(), anaR2 = audioCtx.createAnalyser();
+    
+    anaL1.fftSize = anaR1.fftSize = anaL2.fftSize = anaR2.fftSize = 1024;
+    
+    // --- 【ルート1】Dante 1-2 の完全独立ルーティング ---
+    src1.connect(gainNode1);
+    gainNode1.connect(splitter1);
+    splitter1.connect(anaL1, 0); // 純粋なDVS 1ch ➔ VU1-L
+    splitter1.connect(anaR1, 1); // 純粋なDVS 2ch ➔ VU1-R
+    
+    // --- 【ルート2】Dante 3-4 の完全独立ルーティング ---
+    src2.connect(gainNode2);
+    gainNode2.connect(splitter2);
+    splitter2.connect(anaL2, 0); // 純粋なDVS 3ch ➔ VU2-L
+    splitter2.connect(anaR2, 1); // 純粋なDVS 4ch ➔ VU2-R
+
+    const bufL1 = new Float32Array(1024), bufR1 = new Float32Array(1024);
+    const bufL2 = new Float32Array(1024), bufR2 = new Float32Array(1024);
+    const scopeCtx = document.getElementById("cvsScope").getContext("2d");
+    
+    const vuWin = Math.floor(audioCtx.sampleRate * 0.15);
+    const vuBufL1 = [], vuBufR1 = [], vuBufL2 = [], vuBufR2 = [];
+    let lastX = 85, lastY = 85;
+
+    function loop() {
+        if (!audioCtx) return;
+        const vG = parseFloat(document.getElementById("vuGain").value);
+        const sG = parseFloat(document.getElementById("scopeGain").value);
+        
+        // 両方の音量調整ノードに同じスライダーの値を適用
+        gainNode1.gain.value = Math.pow(10, (vG - 20) / 20);
+        gainNode2.gain.value = Math.pow(10, (vG - 20) / 20);
+        
+        document.getElementById("vuVal").innerText = (vG-20>=0?"+":"")+(vG-20)+" dB";
+        document.getElementById("scopeVal").innerText = "x" + sG.toFixed(1);
+
+        // 完全に隔離された状態の音データを取得
+        anaL1.getFloatTimeDomainData(bufL1); anaR1.getFloatTimeDomainData(bufR1);
+        anaL2.getFloatTimeDomainData(bufL2); anaR2.getFloatTimeDomainData(bufR2);
+        
+        const getRMS = (b, vBuf) => {
+            for(let i=0; i<b.length; i++) vBuf.push(b[i]*b[i]);
+            while(vBuf.length > vuWin) vBuf.shift();
+            return Math.sqrt(vBuf.reduce((a,b)=>a+b,0)/vBuf.length);
+        };
+        
+        const targetL1 = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL1, vuBufL1) || 0.00001) + 12)));
+        const targetR1 = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR1, vuBufR1) || 0.00001) + 12)));
+        const targetL2 = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL2, vuBufL2) || 0.00001) + 12)));
+        const targetR2 = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR2, vuBufR2) || 0.00001) + 12)));
+
+        currentL1 += (targetL1 - currentL1) * 0.145;
+        currentR1 += (targetR1 - currentR1) * 0.145;
+        currentL2 += (targetL2 - currentL2) * 0.145;
+        currentR2 += (targetR2 - currentR2) * 0.145;
+        
+        document.getElementById("ndlL1").style.transform = `rotate(${90-currentL1}deg)`;
+        document.getElementById("ndlR1").style.transform = `rotate(${90-currentR1}deg)`;
+        document.getElementById("ndlL2").style.transform = `rotate(${90-currentL2}deg)`;
+        document.getElementById("ndlR2").style.transform = `rotate(${90-currentR2}deg)`;
+
+        // フェーズスコープ (ALL MIXの位相を表示)
+        scopeCtx.fillStyle = "rgba(0, 8, 0, 0.2)"; scopeCtx.fillRect(0, 0, 170, 170);
+        scopeCtx.strokeStyle = "#152a15"; scopeCtx.beginPath(); scopeCtx.moveTo(85, 0); scopeCtx.lineTo(85, 170); scopeCtx.moveTo(0, 85); scopeCtx.lineTo(170, 85); scopeCtx.stroke();
+        scopeCtx.beginPath(); scopeCtx.strokeStyle = "#00ff66"; scopeCtx.lineWidth = 1.2;
+        
+        for(let i=0; i<bufL1.length; i+=2) {
+            const rawX = (bufR1[i] - bufL1[i]) * sG * 30 + 85;
+            const rawY = 85 - (bufL1[i] + bufR1[i]) * sG * 30;
+            const targetX = lastX + (rawX - lastX) * 0.4;
+            const targetY = lastY + (rawY - lastY) * 0.4;
+            if(i===0) scopeCtx.moveTo(targetX, targetY); else scopeCtx.lineTo(targetX, targetY);
+            lastX = targetX;
+            lastY = targetY;
+        }
+        scopeCtx.stroke();
+        requestAnimationFrame(loop);
+    }
+    loop();
+};
+</script>
+</body>
+</html>
