@@ -10,7 +10,7 @@ body { background-color: #050505; margin: 0; display: flex; flex-direction: colu
 .label { color: #eee; font-weight: bold; font-size: 16px; font-family: sans-serif; }
 .meter { position: relative; width: 280px; height: 150px; background-color: #fdfae1; overflow: hidden; border-radius: 4px; border: 1px solid #444; }
 .scope { position: relative; width: 220px; height: 220px; background-color: #000; border: 1px solid #444; border-radius: 4px; }
-.needle { position: absolute; top: 170px; left: 140px; width: 2px; height: 150px; background: #111; transform-origin: bottom center; margin-top: -150px; z-index: 10; }
+.needle { position: absolute; top: 170px; left: 140px; width: 2px; height: 145px; background: #111; transform-origin: bottom center; margin-top: -145px; z-index: 10; }
 .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; color: #aaa; margin-top: 10px; }
 .knob-group { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 12px; }
 select { background: #333; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px; width: 200px; margin-bottom: 10px; }
@@ -159,7 +159,7 @@ btn.onclick = async () => {
     const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
     const scopeCtx = document.getElementById("cvsScope").getContext("2d");
     
-    const vuWin = Math.floor(audioCtx.sampleRate * 0.15), vuBufL = [], vuBufR = [];
+    const vuWin = Math.floor(audioCtx.sampleRate * 0.135), vuBufL = [], vuBufR = [];
 
     let lastX = 110, lastY = 110;
 
@@ -172,14 +172,19 @@ btn.onclick = async () => {
         document.getElementById("scopeVal").innerText = "x" + sG.toFixed(1);
 
         anaL.getFloatTimeDomainData(bufL); anaR.getFloatTimeDomainData(bufR);
-        const getRMS = (b, vBuf) => {
-            for(let i=0; i<b.length; i++) vBuf.push(b[i]*b[i]);
-            while(vBuf.length > vuWin) vBuf.shift();
-            return Math.sqrt(vBuf.reduce((a,b)=>a+b,0)/vBuf.length);
-        };
+
+
+const getRMS = (b, vBuf) => {
+    for(let i=0; i<b.length; i++) vBuf.push(Math.abs(b[i]));
+    while(vBuf.length > vuWin) vBuf.shift();
+    return vBuf.reduce((a,b)=>a+b,0)/vBuf.length;
+};
+
+
+     
         
-        const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 12)));
-        const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 12)));
+        const targetL = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufL, vuBufL) || 0.00001) + 23.8)));
+        const targetR = dbToAngle(Math.max(-20, Math.min(3, 20 * Math.log10(getRMS(bufR, vuBufR) || 0.00001) + 23.8)));
 
         currentL += (targetL - currentL) * 0.145;
         currentR += (targetR - currentR) * 0.145;
