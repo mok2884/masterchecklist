@@ -58,7 +58,13 @@ canvas { position: absolute; top: 0; left: 0; z-index: 5; }
     </div>
     
     <div class="controls">
-        <div class="knob-group"><label>VU GAIN</label><input type="range" id="vuGain" min="0" max="40" value="20"><span id="vuVal">0 dB</span></div>
+        <div class="knob-group"><label>VU GAIN</label>
+
+
+<input type="range" id="vuGain" min="0" max="40" value="20">
+  <span id="vuVal">0 dB</span>
+</div>
+
         <div class="knob-group"><label>SCOPE SENS.</label><input type="range" id="scopeGain" min="0.1" max="5.0" step="0.1" value="1.0"><span id="scopeVal">x1.0</span></div>
     </div>
     <button id="btn">POWER OFF</button>
@@ -184,10 +190,19 @@ btn.onclick = async () => {
 
     function loop() {
         if (!audioCtx) return;
-        const vG = parseFloat(document.getElementById("vuGain").value);
-        const sG = parseFloat(document.getElementById("scopeGain").value);
-        gainNode.gain.value = Math.pow(10, (vG - 20) / 20);
-        document.getElementById("vuVal").innerText = (vG-20>=0?"+":"")+(vG-20)+" dB";
+        const coarse = parseFloat(document.getElementById("vuGainCoarse").value);
+const fine   = parseFloat(document.getElementById("vuGainFine").value);
+const sG     = parseFloat(document.getElementById("scopeGain").value);
+
+// 合算
+const totalDb = (coarse - 20) + fine;
+
+// ゲイン反映
+gainNode.gain.value = Math.pow(10, totalDb / 20);
+
+// 表示
+document.getElementById("vuVal").innerText =
+  (totalDb >= 0 ? "+" : "") + totalDb.toFixed(1) + " dB";
         document.getElementById("scopeVal").innerText = "x" + sG.toFixed(1);
 
         anaL.getFloatTimeDomainData(bufL); anaR.getFloatTimeDomainData(bufR);
