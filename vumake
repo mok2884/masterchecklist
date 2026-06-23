@@ -61,8 +61,9 @@ canvas { position: absolute; top: 0; left: 0; z-index: 5; }
         <div class="knob-group"><label>VU GAIN</label>
 
 
-<input type="range" id="vuGain" min="0" max="40" value="20">
-  <span id="vuVal">0 dB</span>
+<input type="range" id="vuGainCoarse" min="0" max="40" step="1" value="20">
+<input type="range" id="vuGainFine" min="-1" max="1" step="0.1" value="0">
+  <span id="vuVal">0.0 dB</span>
 </div>
 
         <div class="knob-group"><label>SCOPE SENS.</label><input type="range" id="scopeGain" min="0.1" max="5.0" step="0.1" value="1.0"><span id="scopeVal">x1.0</span></div>
