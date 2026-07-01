@@ -92,6 +92,27 @@
 
         #ura-text-container { display: inline-flex; justify-content: center; align-items: center; width: 200px; height: 2.8rem; }
         #ura-text { font-family: sans-serif; font-size: 1.8rem; font-weight: bold; color: var(--alert-red); white-space: nowrap; display: inline-block; opacity: 0; transition: transform 0.01s linear, opacity 0.1s linear; }
+  
+    
+    #time-log {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding-top: 10px;
+}
+
+#col-left, #col-right {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.time-item {
+    font-size: 1.2rem;
+    font-family: monospace;
+    font-weight: bold;
+    color: #004D40;
+}
     </style>
 </head>
 <body>
@@ -115,7 +136,10 @@
             <div id="main-time">00'00"00</div>
         </div>
     </div>
-    
+    <div id="time-log">
+    <div id="col-left"></div>
+    <div id="col-right"></div>
+</div>
     <div class="video-space"></div>
 
     <script>
@@ -123,6 +147,9 @@
         const mainDisplay = document.getElementById('main-time'), clockDisplay = document.getElementById('clock-val');
         const bgLayer = document.getElementById('bg-wipe-layer'), uraText = document.getElementById('ura-text');
         const resetBtn = document.getElementById('reset-btn'), startStopBtn = document.getElementById('start-stop-btn');
+        let timeLogs = [];
+const colLeft = document.getElementById('col-left');
+const colRight = document.getElementById('col-right');
 
         // Wake Lock 関連の処理
         let wakeLock = null;
@@ -145,7 +172,26 @@
 
         function handleStartStop(e) {
             if (e) e.preventDefault();
-            if (!swRunning) {
+            if (!swRunning) {　
+
+                const now = new Date();
+const t = String(now.getHours()).padStart(2,'0') + ":" +
+          String(now.getMinutes()).padStart(2,'0') + ":" +
+          String(now.getSeconds()).padStart(2,'0');
+
+timeLogs.unshift(t);
+if (timeLogs.length > 20) timeLogs.pop();
+
+colLeft.innerHTML = '';
+colRight.innerHTML = '';
+
+timeLogs.forEach((time, i) => {
+    const d = document.createElement('div');
+    d.className = 'time-item';
+    d.innerText = time;
+    if (i < 10) colLeft.appendChild(d);
+    else colRight.appendChild(d);
+});
                 swRunning = true; swStartTime = Date.now() - swElapsedMs;
                 swInterval = setInterval(updateSW, 10); mainDisplay.classList.add('running-text');
             } else {
