@@ -96,12 +96,14 @@
     
   #time-log {
     display: flex;
-    justify-content: center; /* 削除！ */
-    /* 代わりにここをこうする */
-    justify-content: center; 
-    /* ...だけど、そもそも「左右に140pxの箱が二つ」で計280px分あるなら、 */
-    /* 左右の余白を均等にするために、centerのままで「幅」を完全に固定しちゃえばいいんだ！ */
-     min-width: 320px;
+    justify-content: center; /* これを維持する */
+    gap: 40px;
+    padding-top: 10px;
+    width: 100%;
+    max-width: 480px;
+    /* 左右の列の幅を合計した値を「固定幅」として親に与える */
+    width: 320px; 
+    margin: 0 auto; /* これで親の箱自体が画面中央に固定される */
 }
 
 #col-left, #col-right {
