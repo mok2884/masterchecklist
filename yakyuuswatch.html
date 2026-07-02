@@ -94,19 +94,21 @@
         #ura-text { font-family: sans-serif; font-size: 1.8rem; font-weight: bold; color: var(--alert-red); white-space: nowrap; display: inline-block; opacity: 0; transition: transform 0.01s linear, opacity 0.1s linear; }
   
     
-    #time-log {
+   #time-log {
     display: flex;
     justify-content: center;
     gap: 40px;
     padding-top: 10px;
+    width: 100%;       /* 画面幅いっぱいに親箱を広げる */
+    max-width: 480px;  /* 画面幅が広がっても崩れないように制限する */
 }
 
 #col-left, #col-right {
     display: flex;
     flex-direction: column;
     gap: 5px;
+    width: 140px;      /* 左右の列の幅を固定して、空でも場所を確保する */
 }
-
 .time-item {
     font-size: 1.2rem;
     font-family: monospace;
