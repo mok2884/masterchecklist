@@ -107,7 +107,9 @@
     display: flex;
     flex-direction: column;
     gap: 5px;
-    width: 140px;      /* 左右の列の幅を固定して、空でも場所を確保する */
+    width: 140px;
+    min-height: 200px; /* ここで空でも高さを確保する */
+    background: transparent; /* もちろん透明のままで大丈夫 */
 }
 .time-item {
     font-size: 1.2rem;
