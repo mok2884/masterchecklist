@@ -94,16 +94,23 @@
         #ura-text { font-family: sans-serif; font-size: 1.8rem; font-weight: bold; color: var(--alert-red); white-space: nowrap; display: inline-block; opacity: 0; transition: transform 0.01s linear, opacity 0.1s linear; }
   
     
-  #time-log {
+ #time-log {
     display: flex;
-    justify-content: center; /* これを維持する */
-    gap: 40px;
+    justify-content: space-between;
     padding-top: 10px;
-    width: 100%;
-    max-width: 480px;
-    /* 左右の列の幅を合計した値を「固定幅」として親に与える */
-    width: 320px; 
-    margin: 0 auto; /* これで親の箱自体が画面中央に固定される */
+    width: 320px;
+    margin: 0 auto;
+    border: none; /* ← 枠を消す */
+}
+
+#col-left, #col-right {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 140px;
+    min-height: 200px;
+    border: none; /* ← 境界線を消す */
+    background: transparent;
 }
 
 #col-left, #col-right {
@@ -119,6 +126,34 @@
     font-family: monospace;
     font-weight: bold;
     color: #004D40;
+}
+     .shortcut-btns {
+    display: flex;
+    justify-content: center;
+    gap: 10px; /* 少しだけ隙間を詰めて、ボタンを大きくする余裕を作るよ */
+    margin: 10px 0;
+    width: 100%; /* 親の幅いっぱいに */
+}
+
+.shortcut-btns button {
+    flex: 1; /* これで3つのボタンが均等に横に広がるよ */
+    max-width: 120px; /* 広がりすぎないように制限 */
+    padding: 15px 0; /* 高さをしっかり出す */
+    background: linear-gradient(to bottom, #80CBC4, #4DB6AC);
+    color: #004D40;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px #00695C;
+    transition: transform 0.05s, box-shadow 0.05s;
+    font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', sans-serif;
+    font-size: 1.2rem; /* 文字も少し大きく */
+}
+
+.shortcut-btns button:active { 
+    transform: translateY(3px); 
+    box-shadow: 0 1px #00695C; 
 }
     </style>
 </head>
@@ -143,7 +178,11 @@
             <div id="main-time">00'00"00</div>
         </div>
     </div>
-   
+   <div class="shortcut-btns">
+    <button onpointerdown="setStartTime(20)">20s</button>
+    <button onpointerdown="setStartTime(40)">40s</button>
+    <button onpointerdown="setStartTime(60)">60s</button>
+</div>
    <div id="time-log">
     <div id="col-left">
         <div class="time-item" style="opacity: 0;">00:00:00</div>
@@ -164,6 +203,16 @@
 const colLeft = document.getElementById('col-left');
 const colRight = document.getElementById('col-right');
 
+
+        function setStartTime(seconds) {
+    swElapsedMs = seconds * 1000;
+    swStartTime = Date.now() - swElapsedMs;
+    if (!swRunning) {
+        swRunning = true;
+        swInterval = setInterval(updateSW, 10);
+        mainDisplay.classList.add('running-text');
+    }
+}
         // Wake Lock 関連の処理
         let wakeLock = null;
         const requestWakeLock = async () => {
