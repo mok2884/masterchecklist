@@ -290,17 +290,8 @@ const t = String(now.getHours()).padStart(2,'0') + ":" +
 
 timeLogs.unshift(t);
 if (timeLogs.length > 20) timeLogs.pop();
-
-colLeft.innerHTML = '';
-colRight.innerHTML = '';
-
-timeLogs.forEach((time, i) => {
-    const d = document.createElement('div');
-    d.className = 'time-item';
-    d.innerText = time;
-    if (i < 10) colLeft.appendChild(d);
-    else colRight.appendChild(d);
-});
+renderLogs(); 
+                // ← これを入れるだけで、あとは勝手に動くようになるよ！
                 swRunning = true; swStartTime = Date.now() - swElapsedMs;
                 swInterval = setInterval(updateSW, 10); mainDisplay.classList.add('running-text');
             } else {
