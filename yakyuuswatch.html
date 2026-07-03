@@ -202,16 +202,63 @@
         let timeLogs = [];
 const colLeft = document.getElementById('col-left');
 const colRight = document.getElementById('col-right');
+// ログを表示する専用の関数
+        function renderLogs() {
+            colLeft.innerHTML = '';
+            colRight.innerHTML = '';
+            timeLogs.forEach((time, i) => {
+                const d = document.createElement('div');
+                d.className = 'time-item';
+                // (20s) とかの文字列を見つけたら色を変えるよ！
+                if (time.includes('s)')) {
+                    d.innerHTML = time.replace(/\((.*?)\)/, '<span class="log-manual-set">($1)</span>');
+                } else {
+                    d.innerText = time;
+                }
+                if (i < 10) colLeft.appendChild(d);
+                else colRight.appendChild(d);
+            });
+        }
 
-
-        function setStartTime(seconds) {
+       function setStartTime(seconds) {
     swElapsedMs = seconds * 1000;
     swStartTime = Date.now() - swElapsedMs;
+    
+    // ログ用の時間を作って追加するよ
+    const now = new Date();
+    const t = String(now.getHours()).padStart(2,'0') + ":" +
+              String(now.getMinutes()).padStart(2,'0') + ":" +
+              String(now.getSeconds()).padStart(2,'0');
+    
+    timeLogs.unshift(`${t} (${seconds}s)`);
+    if (timeLogs.length > 20) timeLogs.pop();
+    
+    // さっきの専用装置を呼ぶよ！
+    renderLogs();
+
     if (!swRunning) {
         swRunning = true;
         swInterval = setInterval(updateSW, 10);
         mainDisplay.classList.add('running-text');
     }
+}
+
+        // ログを表示する専用の装置
+function renderLogs() {
+    colLeft.innerHTML = '';
+    colRight.innerHTML = '';
+    timeLogs.forEach((time, i) => {
+        const d = document.createElement('div');
+        d.className = 'time-item';
+        // (20s) の部分だけ色を変えるルール
+        if (time.includes('s)')) {
+            d.innerHTML = time.replace(/\((.*?)\)/, '<span class="log-manual-set">($1)</span>');
+        } else {
+            d.innerText = time;
+        }
+        if (i < 10) colLeft.appendChild(d);
+        else colRight.appendChild(d);
+    });
 }
         // Wake Lock 関連の処理
         let wakeLock = null;
