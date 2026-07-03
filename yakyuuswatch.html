@@ -122,10 +122,16 @@
     background: transparent; /* もちろん透明のままで大丈夫 */
 }
 .time-item {
-    font-size: 1.2rem;
+    font-size: 1.3rem; /* ここを大きくしたよ！ */
     font-family: monospace;
     font-weight: bold;
     color: #004D40;
+    white-space: nowrap; /* これを入れると、勝手に改行されなくなるよ */
+}
+        .log-manual-set {
+    font-size: 0.9rem; /* ここだけ小さくする */
+    color: #D32F2F;
+    margin-left: 4px; /* 時刻との隙間を少し空ける */
 }
      .shortcut-btns {
     display: flex;
