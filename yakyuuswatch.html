@@ -122,16 +122,10 @@
     background: transparent; /* もちろん透明のままで大丈夫 */
 }
 .time-item {
-    font-size: 1.3rem; /* ここを大きくしたよ！ */
+    font-size: 1.2rem;
     font-family: monospace;
     font-weight: bold;
     color: #004D40;
-    white-space: nowrap; /* これを入れると、勝手に改行されなくなるよ */
-}
-        .log-manual-set {
-    font-size: 0.9rem; /* ここだけ小さくする */
-    color: #D32F2F;
-    margin-left: 4px; /* 時刻との隙間を少し空ける */
 }
      .shortcut-btns {
     display: flex;
@@ -200,92 +194,141 @@
 
     <div class="video-space"></div>
 
-   <script>
-    let swRunning = false, swStartTime = 0, swElapsedMs = 0, swInterval = null;
-    const mainDisplay = document.getElementById('main-time'), clockDisplay = document.getElementById('clock-val');
-    const bgLayer = document.getElementById('bg-wipe-layer'), uraText = document.getElementById('ura-text');
-    const resetBtn = document.getElementById('reset-btn'), startStopBtn = document.getElementById('start-stop-btn');
-    const colLeft = document.getElementById('col-left');
-    const colRight = document.getElementById('col-right');
-    let timeLogs = [];
+    <script>
+        let swRunning = false, swStartTime = 0, swElapsedMs = 0, swInterval = null;
+        const mainDisplay = document.getElementById('main-time'), clockDisplay = document.getElementById('clock-val');
+        const bgLayer = document.getElementById('bg-wipe-layer'), uraText = document.getElementById('ura-text');
+        const resetBtn = document.getElementById('reset-btn'), startStopBtn = document.getElementById('start-stop-btn');
+        let timeLogs = [];
+const colLeft = document.getElementById('col-left');
+const colRight = document.getElementById('col-right');
 
-    // ログを表示する専用の装置（これが1つだけあればいいの！）
-    function renderLogs() {
-        colLeft.innerHTML = '';
-        colRight.innerHTML = '';
-        timeLogs.forEach((time, i) => {
-            const d = document.createElement('div');
-            d.className = 'time-item';
-            if (time.includes('s)')) {
-                d.innerHTML = time.replace(/\((.*?)\)/, '<span class="log-manual-set">($1)</span>');
-            } else {
-                d.innerText = time;
-            }
-            if (i < 10) colLeft.appendChild(d);
-            else colRight.appendChild(d);
+
+        function setStartTime(seconds) {
+    swElapsedMs = seconds * 1000;
+    swStartTime = Date.now() - swElapsedMs;
+    if (!swRunning) {
+        swRunning = true;
+        swInterval = setInterval(updateSW, 10);
+        mainDisplay.classList.add('running-text');
+    }
+}
+        // Wake Lock 関連の処理
+        let wakeLock = null;
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {}
+        };
+
+        // 初回操作時に Wake Lock を有効にする
+        document.body.addEventListener('pointerdown', () => { 
+            if (!wakeLock) requestWakeLock(); 
+        }, { once: true });
+
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
         });
-    }
 
-    function setStartTime(seconds) {
-        swElapsedMs = seconds * 1000;
-        swStartTime = Date.now() - swElapsedMs;
-        const now = new Date();
-        const t = String(now.getHours()).padStart(2,'0') + ":" + String(now.getMinutes()).padStart(2,'0') + ":" + String(now.getSeconds()).padStart(2,'0');
-        
-        timeLogs.unshift(`${t} (${seconds}s)`);
-        if (timeLogs.length > 20) timeLogs.pop();
-        renderLogs();
+        function handleStartStop(e) {
+            if (e) e.preventDefault();
+            if (!swRunning) {　
 
-        if (!swRunning) {
-            swRunning = true;
-            swInterval = setInterval(updateSW, 10);
-            mainDisplay.classList.add('running-text');
+                const now = new Date();
+const t = String(now.getHours()).padStart(2,'0') + ":" +
+          String(now.getMinutes()).padStart(2,'0') + ":" +
+          String(now.getSeconds()).padStart(2,'0');
+
+timeLogs.unshift(t);
+if (timeLogs.length > 20) timeLogs.pop();
+
+colLeft.innerHTML = '';
+colRight.innerHTML = '';
+
+timeLogs.forEach((time, i) => {
+    const d = document.createElement('div');
+    d.className = 'time-item';
+    d.innerText = time;
+    if (i < 10) colLeft.appendChild(d);
+    else colRight.appendChild(d);
+});
+                swRunning = true; swStartTime = Date.now() - swElapsedMs;
+                swInterval = setInterval(updateSW, 10); mainDisplay.classList.add('running-text');
+            } else {
+                swRunning = false; clearInterval(swInterval);
+                mainDisplay.classList.remove('running-text'); clearAlerts();
+            }
         }
-    }
 
-    // Wake Lock 処理
-    let wakeLock = null;
-    const requestWakeLock = async () => { try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} };
-    document.body.addEventListener('pointerdown', () => { if (!wakeLock) requestWakeLock(); }, { once: true });
-    document.addEventListener('visibilitychange', () => { if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock(); });
+        function handleReset(e) {
+            if (e) e.preventDefault();
+            swRunning = false; clearInterval(swInterval); swElapsedMs = 0;
+            mainDisplay.innerText = "00'00\"00"; mainDisplay.classList.remove('running-text'); clearAlerts();
+        }
 
-    function handleStartStop(e) {
-        if (e) e.preventDefault();
-        if (!swRunning) {
+        function updateSW() {
+            swElapsedMs = Date.now() - swStartTime;
+            let totalSec = Math.floor(swElapsedMs / 1000), subSecMs = swElapsedMs % 1000;
+            let activeColor = null, isRedAlert = false, showUraText = false, targetText = "";
+
+            if (totalSec >= 65 && totalSec < 72) { activeColor = 'var(--alert-red)'; isRedAlert = true; showUraText = true; targetText = "～裏しゃべり～"; }
+            else if (totalSec >= 100 && totalSec < 107) { activeColor = (totalSec < 105) ? 'var(--alert-yellow)' : 'var(--alert-red)'; isRedAlert = (totalSec >= 105); showUraText = true; targetText = "～ポーズ～"; }
+            else if (totalSec >= 57 && totalSec < 65) { activeColor = 'var(--alert-yellow)'; }
+            else if (totalSec >= 107 && totalSec < 110) { activeColor = 'var(--alert-red)'; isRedAlert = true; }
+
+            if (activeColor) {
+                let progress = 0; const baseColor = 'var(--bg-base)', edgeBlur = 15;
+                if (!isRedAlert) {
+                    if (subSecMs < 350) { let pos = 150 - ((subSecMs / 350) * 200); bgLayer.style.background = `linear-gradient(135deg, ${baseColor} ${pos}%, ${activeColor} ${pos + edgeBlur}%)`; }
+                    else if (subSecMs < 700) { let pos = 150 - (((subSecMs - 350) / 350) * 200); bgLayer.style.background = `linear-gradient(135deg, ${activeColor} ${pos}%, ${baseColor} ${pos + edgeBlur}%)`; }
+                    else bgLayer.style.background = 'transparent';
+                } else {
+                    if (subSecMs < 300) { let pos = 150 - ((subSecMs / 300) * 200); bgLayer.style.background = `linear-gradient(135deg, ${baseColor} ${pos}%, ${activeColor} ${pos + edgeBlur}%)`; }
+                    else if (subSecMs < 600) { let pos = 150 - (((subSecMs - 300) / 300) * 200); bgLayer.style.background = `linear-gradient(135deg, ${activeColor} ${pos}%, ${baseColor} ${pos + edgeBlur}%)`; }
+                    else bgLayer.style.background = 'transparent';
+                }
+            } else bgLayer.style.background = 'transparent';
+
+            if (showUraText) {
+                if (uraText.innerText !== targetText) uraText.innerText = targetText;
+                uraText.style.opacity = "1";
+                if (subSecMs < 300) uraText.style.transform = `scale(${1.0 + ((subSecMs / 300) * 0.4)})`;
+                else if (subSecMs < 600) uraText.style.transform = `scale(${1.4 - (((subSecMs - 300) / 300) * 0.4)})`;
+                else uraText.style.transform = 'scale(1.0)';
+            } else { uraText.style.opacity = "0"; uraText.style.transform = 'scale(1.0)'; }
+
+            mainDisplay.innerText = `${String(Math.floor(totalSec/60)).padStart(2,'0')}'${String(totalSec%60).padStart(2,'0')}"${String(Math.floor((swElapsedMs%1000)/10)).padStart(2,'0')}`;
+        }
+
+        function clearAlerts() { bgLayer.style.background = 'transparent'; uraText.style.opacity = "0"; uraText.style.transform = 'scale(1.0)'; }
+
+        function updateClock() {
             const now = new Date();
-            const t = String(now.getHours()).padStart(2,'0') + ":" + String(now.getMinutes()).padStart(2,'0') + ":" + String(now.getSeconds()).padStart(2,'0');
-            timeLogs.unshift(t);
-            if (timeLogs.length > 20) timeLogs.pop();
-            renderLogs();
-            swRunning = true; swStartTime = Date.now() - swElapsedMs;
-            swInterval = setInterval(updateSW, 10); mainDisplay.classList.add('running-text');
-        } else {
-            swRunning = false; clearInterval(swInterval);
-            mainDisplay.classList.remove('running-text'); clearAlerts();
+            clockDisplay.innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+            
+            const totalSecondsNow = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+            
+            const isInRange1 = (totalSecondsNow >= (0 * 3600 + 25 * 60 + 30) && totalSecondsNow <= (0 * 3600 + 26 * 60 + 2));
+            const isInRange2 = (totalSecondsNow >= (18 * 3600 + 2 * 60 + 30) && totalSecondsNow <= (18 * 3600 + 3 * 60 + 2));
+            const isInRange3 = (totalSecondsNow >= (18 * 3600 + 17 * 60 + 30) && totalSecondsNow <= (18 * 3600 + 18 * 60 + 2));
+            const isInRange4 = (totalSecondsNow >= (18 * 3600 + 22 * 60 + 30) && totalSecondsNow <= (18 * 3600 + 23 * 60 + 2));
+
+            if (isInRange1 || isInRange2 || isInRange3 || isInRange4) {
+                if (!resetBtn.classList.contains('btn-alert-active-reset')) {
+                    resetBtn.classList.add('btn-alert-active-reset'); startStopBtn.classList.add('btn-alert-active-start');
+                }
+                resetBtn.innerText = "！！ポーズ！！裏しゃべり！！";
+            } else {
+                if (resetBtn.classList.contains('btn-alert-active-reset')) {
+                    resetBtn.classList.remove('btn-alert-active-reset'); startStopBtn.classList.remove('btn-alert-active-start');
+                }
+                resetBtn.innerText = "RESET";
+            }
         }
-    }
-
-    function handleReset(e) {
-        if (e) e.preventDefault();
-        swRunning = false; clearInterval(swInterval); swElapsedMs = 0;
-        mainDisplay.innerText = "00'00\"00"; mainDisplay.classList.remove('running-text'); clearAlerts();
-    }
-
-    function updateSW() {
-        swElapsedMs = Date.now() - swStartTime;
-        let totalSec = Math.floor(swElapsedMs / 1000), subSecMs = swElapsedMs % 1000;
-        // （警告処理などはそのまま）
-        mainDisplay.innerText = `${String(Math.floor(totalSec/60)).padStart(2,'0')}'${String(totalSec%60).padStart(2,'0')}"${String(Math.floor((swElapsedMs%1000)/10)).padStart(2,'0')}`;
-    }
-
-    function clearAlerts() { bgLayer.style.background = 'transparent'; uraText.style.opacity = "0"; uraText.style.transform = 'scale(1.0)'; }
-
-    function updateClock() {
-        const now = new Date();
-        clockDisplay.innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-    }
-    setInterval(updateClock, 200);
-    updateClock();
-</script>
+        setInterval(updateClock, 200);
+        updateClock();
+    </script>
 </body>
 </html>
