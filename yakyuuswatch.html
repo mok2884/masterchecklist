@@ -205,8 +205,31 @@ const colRight = document.getElementById('col-right');
 
 
         function setStartTime(seconds) {
+
+    const now = new Date();
+    const t = String(now.getHours()).padStart(2,'0') + ":" +
+              String(now.getMinutes()).padStart(2,'0') + ":" +
+              String(now.getSeconds()).padStart(2,'0');
+
+    const memo = seconds + "s";
+
+    timeLogs.unshift(t + "   " + memo);
+    if (timeLogs.length > 20) timeLogs.pop();
+
+    colLeft.innerHTML = '';
+    colRight.innerHTML = '';
+
+    timeLogs.forEach((time, i) => {
+        const d = document.createElement('div');
+        d.className = 'time-item';
+        d.innerText = time;
+        if (i < 10) colLeft.appendChild(d);
+        else colRight.appendChild(d);
+    });
+
     swElapsedMs = seconds * 1000;
     swStartTime = Date.now() - swElapsedMs;
+
     if (!swRunning) {
         swRunning = true;
         swInterval = setInterval(updateSW, 10);
