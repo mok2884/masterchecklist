@@ -220,11 +220,19 @@ const colRight = document.getElementById('col-right');
     colRight.innerHTML = '';
 
     timeLogs.forEach((time, i) => {
-        const d = document.createElement('div');
-        d.className = 'time-item';
-        d.innerText = time;
-        if (i < 10) colLeft.appendChild(d);
-        else colRight.appendChild(d);
+       const d = document.createElement('div');
+d.className = 'time-item';
+
+const m = time.match(/^(.*?)(\s+\d+s)$/);
+
+if (m) {
+    d.innerHTML = `${m[1]}<span style="color:#B8860B;">${m[2]}</span>`;
+} else {
+    d.innerText = time;
+}
+
+if (i < 10) colLeft.appendChild(d);
+else colRight.appendChild(d);
     });
 
     swElapsedMs = seconds * 1000;
@@ -271,11 +279,19 @@ colLeft.innerHTML = '';
 colRight.innerHTML = '';
 
 timeLogs.forEach((time, i) => {
-    const d = document.createElement('div');
-    d.className = 'time-item';
+   const d = document.createElement('div');
+d.className = 'time-item';
+
+const m = time.match(/^(.*?)(\s+\d+s)$/);
+
+if (m) {
+    d.innerHTML = `${m[1]}<span style="color:#B8860B;">${m[2]}</span>`;
+} else {
     d.innerText = time;
-    if (i < 10) colLeft.appendChild(d);
-    else colRight.appendChild(d);
+}
+
+if (i < 10) colLeft.appendChild(d);
+else colRight.appendChild(d);
 });
                 swRunning = true; swStartTime = Date.now() - swElapsedMs;
                 swInterval = setInterval(updateSW, 10); mainDisplay.classList.add('running-text');
