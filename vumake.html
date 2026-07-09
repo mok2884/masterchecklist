@@ -44,6 +44,18 @@ input[type=range] { width: 130px; cursor: pointer; }
 #btn { padding: 10px 30px; cursor: pointer; font-weight: bold; border-radius: 4px; border: none; background: #444; color: white; }
 #btn.on { background: #d00; }
 canvas { position: absolute; top: 0; left: 0; z-index: 5; }
+    .rta-window {
+    width:760px;
+    height:260px;
+    background:#050505;
+    border:1px solid #444;
+    box-sizing:border-box;
+}
+
+#rtaCanvas {
+    position:static;
+    display:block;
+}
 </style>
 </head>
 <body>
@@ -95,7 +107,7 @@ canvas { position: absolute; top: 0; left: 0; z-index: 5; }
     </div>
 
     <div class="unit">
-        <div class="label">LOUDNESS</div>
+        <div class="label">未LOUDNESS</div>
 
         <div style="color:#0f0; margin-top:5px;" id="lkfsVal">-60.0 LKFS</div>
 
@@ -118,6 +130,9 @@ canvas { position: absolute; top: 0; left: 0; z-index: 5; }
     </div>
     
     
+<div class="rta-window">
+    <canvas id="rtaCanvas" width="760" height="260"></canvas>
+</div>
 
 
 
@@ -231,9 +246,38 @@ btn.onclick = async () => {
     const splitter = audioCtx.createChannelSplitter(2);
     const anaL = audioCtx.createAnalyser(), anaR = audioCtx.createAnalyser();
     const gainNode = audioCtx.createGain();
+    const rtaAnalyser = audioCtx.createAnalyser();
+
+rtaAnalyser.fftSize = 4096;
+rtaAnalyser.smoothingTimeConstant = 0.8;
+
+const rtaData =
+    new Float32Array(rtaAnalyser.frequencyBinCount);
+
+rtaAnalyser.minDecibels = -90;
+rtaAnalyser.maxDecibels = -10;
+rtaAnalyser.smoothingTimeConstant = 0.9;
+
+const rtaCanvas =
+    document.getElementById("rtaCanvas");
+
+const rtaCtx =
+    rtaCanvas.getContext("2d");
+
+const rtaBands = 31;
+
+const barWidth = 18;
+const barGap = 6;
+
+const rtaPeak =
+    new Array(rtaBands).fill(-100);
     
     anaL.fftSize = anaR.fftSize = 1024;
-    src.connect(gainNode); gainNode.gain.value = 1; gainNode.connect(splitter);
+    src.connect(gainNode);
+gainNode.gain.value = 1;
+
+gainNode.connect(splitter);
+gainNode.connect(rtaAnalyser);
     splitter.connect(anaL, 0); splitter.connect(anaR, 1);
 
     const bufL = new Float32Array(1024), bufR = new Float32Array(1024);
@@ -323,7 +367,181 @@ document.getElementById("barM").style.height = hM + "%";
 document.getElementById("barS").style.height = hS + "%";
 
 document.getElementById("lkfsVal").innerText = valS.toFixed(1) + " LKFS";
-        
+
+
+        // ===== RTA描画 =====
+
+rtaAnalyser.getFloatFrequencyData(rtaData);
+
+rtaCtx.clearRect(
+    0,
+    0,
+    rtaCanvas.width,
+    rtaCanvas.height
+);
+
+
+// 背景
+rtaCtx.fillStyle = "#050505";
+rtaCtx.fillRect(
+    0,
+    0,
+    rtaCanvas.width,
+    rtaCanvas.height
+);
+
+
+// ガイド線
+const guide = [
+    {f:100,  strong:true},
+    {f:200,  strong:false},
+    {f:500,  strong:false},
+    {f:1000, strong:true},
+    {f:2000, strong:false},
+    {f:5000, strong:false},
+    {f:10000,strong:true}
+];
+
+function freqX(freq){
+
+    const min = 20;
+    const max = 20000;
+
+    return Math.log10(freq/min) /
+           Math.log10(max/min) *
+           rtaCanvas.width;
+}
+
+
+guide.forEach(g=>{
+
+    rtaCtx.beginPath();
+
+    rtaCtx.strokeStyle =
+        g.strong ?
+        "rgba(255,255,255,0.25)" :
+        "rgba(255,255,255,0.12)";
+
+    rtaCtx.moveTo(
+        freqX(g.f),
+        0
+    );
+
+    rtaCtx.lineTo(
+        freqX(g.f),
+        220
+    );
+
+    rtaCtx.stroke();
+
+});
+
+
+// 31本バー
+
+// 31本バー
+
+
+        const bands = [
+20,25,31.5,40,50,63,80,100,
+125,160,200,250,315,400,500,630,
+800,1000,1250,1600,2000,2500,
+3150,4000,5000,6300,8000,
+10000,12500,16000,20000
+];
+       for(let b=0;b<bands.length;b++){
+
+   
+const centerFreq = bands[b];
+
+    const startFreq =
+        centerFreq / Math.pow(2, 1/6);
+
+    const endFreq =
+        centerFreq * Math.pow(2, 1/6);
+
+
+    const binHz =
+    audioCtx.sampleRate /
+    rtaAnalyser.fftSize;
+
+const startBin =
+    Math.floor(startFreq / binHz);
+
+const endBin =
+    Math.floor(endFreq / binHz);
+
+    let peakDb = -90;
+
+for(let i=startBin; i<=endBin; i++){
+
+    if(rtaData[i] !== undefined){
+
+        peakDb = Math.max(
+            peakDb,
+            rtaData[i]
+        );
+
+    }
+
+}
+
+const db = peakDb;
+
+
+    const h =
+    Math.max(
+        0,
+        Math.min(
+            220,
+            (db + 90) / 80 * 220
+        )
+    );
+
+
+    const x =
+        10 + b * (18 + 6);
+
+
+    rtaCtx.fillStyle="#777";
+
+
+    rtaCtx.fillRect(
+        x,
+        220-h,
+        18,
+        h
+    );
+
+}
+
+
+// 周波数表示
+
+rtaCtx.fillStyle="#aaa";
+rtaCtx.font="12px sans-serif";
+rtaCtx.textAlign="center";
+
+
+[
+20,
+100,
+200,
+500,
+1000,
+2000,
+5000,
+10000,
+20000
+].forEach(f=>{
+
+    rtaCtx.fillText(
+        f>=1000 ? (f/1000)+"k" : f,
+        freqX(f),
+        245
+    );
+
+});
         requestAnimationFrame(loop);
     }
     loop();
