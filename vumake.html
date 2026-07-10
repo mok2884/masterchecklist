@@ -407,9 +407,10 @@ function freqX(freq){
     const min = 20;
     const max = 20000;
 
-    return Math.log10(freq/min) /
-           Math.log10(max/min) *
-           rtaCanvas.width;
+    return 30 +
+       Math.log10(freq/min) /
+       Math.log10(max/min) *
+       (rtaCanvas.width - 60);
 }
 
 
@@ -525,23 +526,36 @@ rtaCtx.font="12px sans-serif";
 rtaCtx.textAlign="center";
 
 
+
 [
 20,
+50,
 100,
 200,
+315,
 500,
 1000,
 2000,
+3150,
 5000,
 10000,
 20000
 ].forEach(f=>{
 
-    rtaCtx.fillText(
-        f>=1000 ? (f/1000)+"k" : f,
-        freqX(f),
-        245
-    );
+    let label = f;
+
+if(f === 1000) label = "1k";
+if(f === 2000) label = "2k";
+if(f === 3150) label = "3.15k";
+if(f === 5000) label = "5k";
+if(f === 10000) label = "10k";
+if(f === 20000) label = "20k";
+
+rtaCtx.fillText(
+    label,
+    freqX(f),
+    245
+);
 
 });
         requestAnimationFrame(loop);
