@@ -188,14 +188,19 @@ canvas { position: absolute; top: 0; left: 0; z-index: 5; }
     const panel =
         document.getElementById("mainPanel");
 
+    panel.style.transform = "scale(1)";
+
+    const rect =
+        panel.getBoundingClientRect();
+
     const scaleX =
-        window.innerWidth / panel.offsetWidth;
+        window.innerWidth / rect.width;
 
     const scaleY =
-        window.innerHeight / panel.offsetHeight;
+        window.innerHeight / rect.height;
 
     const scale =
-        Math.min(scaleX, scaleY, 1);
+        Math.min(scaleX, scaleY) * 0.9;
 
     panel.style.transform =
         `scale(${scale})`;
