@@ -67,9 +67,14 @@ canvas { position: absolute; top: 0; left: 0; z-index: 5; }
     align-items:center;
     gap:10px;
 }
+#mainPanel{
+    transform-origin: top center;
+}
+    
 </style>
 </head>
 <body>
+    <div id="mainPanel">
 <div class="console">
   
 
@@ -178,6 +183,26 @@ canvas { position: absolute; top: 0; left: 0; z-index: 5; }
 </div>
 
 <script>
+    function fitScreen(){
+
+    const panel =
+        document.getElementById("mainPanel");
+
+    const scaleX =
+        window.innerWidth / panel.offsetWidth;
+
+    const scaleY =
+        window.innerHeight / panel.offsetHeight;
+
+    const scale =
+        Math.min(scaleX, scaleY, 1);
+
+    panel.style.transform =
+        `scale(${scale})`;
+}
+
+window.addEventListener("resize", fitScreen);
+window.addEventListener("load", fitScreen);
 // Wake Lock 関連の処理
 let wakeLock = null;
 const requestWakeLock = async () => {
@@ -606,5 +631,6 @@ rtaCtx.fillText(
     lkfsOn = true;
 };
 </script>
+    </div>
 </body>
 </html>
