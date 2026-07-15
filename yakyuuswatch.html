@@ -254,7 +254,7 @@ const colRight = document.getElementById('col-right');
 
         function setStartTime(seconds) {
 
-    const now = new Date();
+    const now = new Date(Date.now() + clockOffsetMs);
     const t = String(now.getHours()).padStart(2,'0') + ":" +
               String(now.getMinutes()).padStart(2,'0') + ":" +
               String(now.getSeconds()).padStart(2,'0');
@@ -326,7 +326,7 @@ offsetSlider.addEventListener('input', () => {
             if (e) e.preventDefault();
             if (!swRunning) {　
 
-                const now = new Date();
+                const now = new Date(Date.now() + clockOffsetMs);
 const t = String(now.getHours()).padStart(2,'0') + ":" +
           String(now.getMinutes()).padStart(2,'0') + ":" +
           String(now.getSeconds()).padStart(2,'0');
