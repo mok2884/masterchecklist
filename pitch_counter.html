@@ -93,7 +93,7 @@
     </div>
 
     <script>
-        let count = 0;
+        let count = 1;
         let timer;
         let isResetting = false;
         let lastTapTime = 0; 
@@ -126,7 +126,7 @@
         };
 
         const resetCount = () => {
-            count = 0;
+            count = 1;
             counterDisplay.innerText = count;
             isResetting = true;
             triggerPulse(); 
