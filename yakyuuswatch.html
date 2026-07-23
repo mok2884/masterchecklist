@@ -70,6 +70,62 @@
             25% { transform: scale(1.15); } 
             50% { transform: scale(1); } 
         }
+     @keyframes time-signal-pulse {
+    0%   { transform: scale(1); }
+
+    15%  { transform: scale(2.4); }
+
+    22%  { transform: scale(2.4); }
+
+    35%  { transform: scale(1); }
+
+    100% { transform: scale(1); }
+}
+
+
+
+.time-alert-yellow {
+    background: linear-gradient(to bottom, #FFF176, #FBC02D) !important;
+    animation: time-signal-pulse 2s infinite;
+    z-index: 100;
+}
+      @keyframes time-signal-pulse-slow {
+    0%   { transform: scale(1); }
+
+    6%   { transform: scale(2.8); }
+
+    9%   { transform: scale(2.8); }
+
+    14%  { transform: scale(1); }
+
+    100% { transform: scale(1); }
+}
+
+.time-alert-yellow-slow {
+    background: linear-gradient(to bottom, #FFF176, #FBC02D) !important;
+    animation: time-signal-pulse-slow 5s infinite;
+    z-index: 100;
+}
+
+
+        @keyframes time-signal-pulse-red {
+    0%   { transform: scale(1); }
+
+    15%  { transform: scale(2.9); }
+
+    22%  { transform: scale(2.9); }
+
+    35%  { transform: scale(1); }
+
+    100% { transform: scale(1); }
+}
+        .time-alert-red {
+    background: linear-gradient(to bottom, #FF5252, #D50000) !important;
+    animation: time-signal-pulse-red 2s infinite;
+    z-index: 100;
+}
+
+
 
         .btn-alert-active-reset { animation: pulse-red-alert 1.2s infinite linear, bounce 1.2s infinite linear; }
         .btn-alert-active-start { animation: pulse-red-alert-start 1.2s infinite linear; }
@@ -412,7 +468,34 @@ else colRight.appendChild(d);
             const isInRange2 = (totalSecondsNow >= (18 * 3600 + 2 * 60 + 30) && totalSecondsNow <= (18 * 3600 + 3 * 60 + 2));
             const isInRange3 = (totalSecondsNow >= (18 * 3600 + 17 * 60 + 30) && totalSecondsNow <= (18 * 3600 + 18 * 60 + 2));
             const isInRange4 = (totalSecondsNow >= (18 * 3600 + 22 * 60 + 30) && totalSecondsNow <= (18 * 3600 + 23 * 60 + 2));
+const minute = now.getMinutes();
+const secInMinute = now.getSeconds();
 
+startStopBtn.classList.remove(
+    'time-alert-yellow-slow',
+    'time-alert-yellow',
+    'time-alert-red'
+);
+
+if (minute === 59) {
+
+    if (secInMinute >= 10 && secInMinute < 30) {
+
+        startStopBtn.classList.add('time-alert-yellow-slow');
+
+    }
+    else if (secInMinute >= 30 && secInMinute < 45) {
+
+        startStopBtn.classList.add('time-alert-yellow');
+
+    }
+    else if (secInMinute >= 45) {
+
+        startStopBtn.classList.add('time-alert-red');
+
+    }
+
+}
             if (isInRange1 || isInRange2 || isInRange3 || isInRange4) {
                 if (!resetBtn.classList.contains('btn-alert-active-reset')) {
                     resetBtn.classList.add('btn-alert-active-reset'); startStopBtn.classList.add('btn-alert-active-start');
