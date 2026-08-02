@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -92,9 +91,9 @@
       @keyframes time-signal-pulse-slow {
     0%   { transform: scale(1); }
 
-    6%   { transform: scale(2.8); }
+    6%   { transform: scale(3.5); }
 
-    9%   { transform: scale(2.8); }
+    9%   { transform: scale(3.5); }
 
     14%  { transform: scale(1); }
 
@@ -111,9 +110,9 @@
         @keyframes time-signal-pulse-red {
     0%   { transform: scale(1); }
 
-    15%  { transform: scale(2.9); }
+    15%  { transform: scale(3.8); }
 
-    22%  { transform: scale(2.9); }
+    22%  { transform: scale(3.8); }
 
     35%  { transform: scale(1); }
 
@@ -139,9 +138,15 @@
         #display-panel:active { transform: scale(0.98); }
 
         .label { font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; color: #00796B; opacity: 0.8; margin-bottom: 2px; }
-        .clock-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        #clock-val { color: var(--text-standard); font-size: 2rem; font-variant-numeric: tabular-nums; font-weight: 700; line-height: 1; }
-        #main-time { color: var(--text-standard); font-size: 4.2rem; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
+        .clock-row { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px; }
+        #clock-val {
+    color: #2F7F76;     
+    font-size: 3.4rem;   
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    line-height: 1;
+}
+        #main-time { color: var(--text-standard); font-size: 4.4rem; font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
         .running-text { color: var(--accent-red) !important; }
         .divider { border: none; border-top: 2px solid rgba(0, 77, 64, 0.1); margin: 8px 0; }
         .video-space { flex-grow: 1; width: 100%; }
