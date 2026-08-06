@@ -1,1 +1,354 @@
 
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Realtime LKFS Meter</title>
+
+<style>
+body{
+    background:#111;
+    color:#fff;
+    font-family:Arial;
+    text-align:center;
+    margin-top:40px;
+}
+
+#lkfs{
+    font-size:72px;
+    margin:40px;
+    color:#00ff66;
+}
+
+button{
+    font-size:22px;
+    padding:10px 30px;
+    margin:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Integrated LKFS</h2>
+
+<div id="lkfs">--.-</div>
+
+<button id="startBtn">START</button>
+<button id="stopBtn">STOP</button>
+<button id="resetBtn">RESET</button>
+
+<script>
+
+let audioContext;
+let stream;
+let source;
+let processor;
+
+let sampleRate = 48000;
+
+// 後でLKFS計算へ渡すPCMバッファ
+let pcmBuffer=[];
+  const BLOCK_SEC = 0.400;
+const OVERLAP = 0.75;
+const STEP_SEC = BLOCK_SEC * (1.0 - OVERLAP);
+
+let sampleBufferL = [];
+let sampleBufferR = [];
+
+let blockEnergy = [];
+
+  let blockLKFS = [];
+  let valid = [];
+  const G = [1.0,1.0];
+  const REL_GATE_OFFSET = 10.0;
+const ABS_GATE = -70.0;
+  function makeHighShelf(G,Q,fc,rate){
+
+    const A=Math.pow(10,G/40);
+
+    const w0=2*Math.PI*fc/rate;
+
+    const alpha=Math.sin(w0)/(2*Q);
+
+    const c=Math.cos(w0);
+
+    const s=Math.sqrt(A);
+
+    let b0=A*((A+1)+(A-1)*c+2*s*alpha);
+    let b1=-2*A*((A-1)+(A+1)*c);
+    let b2=A*((A+1)+(A-1)*c-2*s*alpha);
+
+    let a0=(A+1)-(A-1)*c+2*s*alpha;
+    let a1=2*((A-1)-(A+1)*c);
+    let a2=(A+1)-(A-1)*c-2*s*alpha;
+
+    return{
+
+        b:[b0/a0,b1/a0,b2/a0],
+        a:[1,a1/a0,a2/a0]
+
+    };
+
+}
+
+function makeHighPass(Q,fc,rate){
+
+    const w0 = 2 * Math.PI * fc / rate;
+
+    const alpha = Math.sin(w0) / (2 * Q);
+
+    const c = Math.cos(w0);
+
+    let b0 = (1 + c) / 2;
+    let b1 = -(1 + c);
+    let b2 = (1 + c) / 2;
+
+    let a0 = 1 + alpha;
+    let a1 = -2 * c;
+    let a2 = 1 - alpha;
+
+    return {
+
+        b: [
+            b0 / a0,
+            b1 / a0,
+            b2 / a0
+        ],
+
+        a: [
+            1,
+            a1 / a0,
+            a2 / a0
+        ]
+
+    };
+
+}
+
+  
+  class Biquad {
+
+    constructor(b, a){
+
+        this.b0 = b[0];
+        this.b1 = b[1];
+        this.b2 = b[2];
+
+        this.a1 = a[1];
+        this.a2 = a[2];
+
+        this.x1 = 0;
+        this.x2 = 0;
+
+        this.y1 = 0;
+        this.y2 = 0;
+
+    }
+
+    process(x){
+
+        const y =
+            this.b0 * x +
+            this.b1 * this.x1 +
+            this.b2 * this.x2 -
+            this.a1 * this.y1 -
+            this.a2 * this.y2;
+
+        this.x2 = this.x1;
+        this.x1 = x;
+
+        this.y2 = this.y1;
+        this.y1 = y;
+
+        return y;
+
+    }
+
+}
+
+  
+document.getElementById("startBtn").onclick=async()=>{
+
+    stream=await navigator.mediaDevices.getUserMedia({
+        audio:{
+            channelCount:2,
+            echoCancellation:false,
+            noiseSuppression:false,
+            autoGainControl:false
+        }
+    });
+
+    audioContext=new AudioContext();
+
+    sampleRate=audioContext.sampleRate;
+  const hs = makeHighShelf(
+    4.0,
+    Math.SQRT1_2,
+    1500.0,
+    sampleRate
+);
+
+const hp = makeHighPass(
+    0.5,
+    38.0,
+    sampleRate
+);
+
+const hsL = new Biquad(hs.b, hs.a);
+const hsR = new Biquad(hs.b, hs.a);
+
+const hpL = new Biquad(hp.b, hp.a);
+const hpR = new Biquad(hp.b, hp.a);
+
+    source=audioContext.createMediaStreamSource(stream);
+
+    processor=audioContext.createScriptProcessor(4096,2,2);
+
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+
+    processor.onaudioprocess=e=>{
+
+        const L=e.inputBuffer.getChannelData(0);
+        const R=e.inputBuffer.numberOfChannels>1
+            ?e.inputBuffer.getChannelData(1)
+            :L;
+
+        pcmBuffer.push({
+            left:new Float32Array(L),
+            right:new Float32Array(R)
+        });
+
+        // ここに後で
+        // K-weighting
+        // 400ms block
+        // Gate
+        // Integrated LKFS
+        // を追加する
+for(let i=0;i<L.length;i++){
+  const fl = hpL.process(
+    hsL.process(L[i])
+);
+
+const fr = hpR.process(
+    hsR.process(R[i])
+);
+
+   sampleBufferL.push(fl);
+sampleBufferR.push(fr);
+
+}
+
+const blockSamples = Math.floor(BLOCK_SEC * sampleRate);
+
+while(sampleBufferL.length >= blockSamples){
+
+    let sum = 0;
+
+    for(let i=0;i<blockSamples;i++){
+
+        const l = sampleBufferL[i];
+        const r = sampleBufferR[i];
+
+        sum += l*l;
+        sum += r*r;
+
+    }
+
+   const meanSquare = sum / (blockSamples * 2);
+
+blockEnergy.push(meanSquare);
+  const lkfs =
+    -0.691 +
+    10.0 * Math.log10(
+        Math.max(meanSquare,1e-12)
+    );
+
+blockLKFS.push(lkfs);
+
+    
+
+for(let i=0;i<blockEnergy.length;i++){
+
+    if(blockLKFS[i] > ABS_GATE){
+
+        valid.push(blockEnergy[i]);
+
+    }
+
+}
+
+if(valid.length){
+
+    let sumEnergy = 0;
+
+    for(const e of valid){
+
+        sumEnergy += e;
+
+    }
+
+    const avgEnergy = sumEnergy / valid.length;
+
+    const integrated =
+        -0.691 +
+        10 * Math.log10(
+            Math.max(avgEnergy,1e-12)
+        );
+
+    document.getElementById("lkfs").innerText =
+        integrated.toFixed(1);
+
+}
+
+    const remove = Math.floor(STEP_SEC * sampleRate);
+
+    sampleBufferL.splice(0, remove);
+    sampleBufferR.splice(0, remove);
+
+}
+      
+
+    };
+
+};
+
+document.getElementById("stopBtn").onclick=()=>{
+
+    if(processor) processor.disconnect();
+    if(source) source.disconnect();
+
+    if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+    }
+
+    if(audioContext){
+        audioContext.close();
+    }
+audioContext = null;
+processor = null;
+source = null;
+stream = null;
+
+sampleBufferL = [];
+sampleBufferR = [];
+blockEnergy = [];
+  blockLKFS = [];
+};
+
+document.getElementById("resetBtn").onclick=()=>{
+pcmBuffer=[];
+
+sampleBufferL=[];
+sampleBufferR=[];
+blockEnergy=[];
+
+document.getElementById("lkfs").innerText="--.-";
+
+};
+
+</script>
+
+</body>
+</html>
