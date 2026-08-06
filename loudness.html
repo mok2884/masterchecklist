@@ -1,10 +1,10 @@
-
+<br>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <title>Realtime LKFS Meter</title>
-
+<br>
 <style>
 body{
     background:#111;
@@ -13,13 +13,13 @@ body{
     text-align:center;
     margin-top:40px;
 }
-
+<br>
 #lkfs{
     font-size:72px;
     margin:40px;
     color:#00ff66;
 }
-
+<br>
 button{
     font-size:22px;
     padding:10px 30px;
@@ -27,149 +27,149 @@ button{
 }
 </style>
 </head>
-
+<br>
 <body>
-
+<br>
 <h2>Integrated LKFS</h2>
-
+<br>
 <div id="lkfs">--.-</div>
-
+<br>
 <button id="startBtn">START</button>
 <button id="stopBtn">STOP</button>
 <button id="resetBtn">RESET</button>
-
+<br>
 <script>
-
+<br>
 let audioContext;
 let stream;
 let source;
 let processor;
-
+<br>
 let sampleRate = 48000;
-
+<br>
 // 後でLKFS計算へ渡すPCMバッファ
 let pcmBuffer=[];
   const BLOCK_SEC = 0.400;
 const OVERLAP = 0.75;
 const STEP_SEC = BLOCK_SEC * (1.0 - OVERLAP);
-
+<br>
 let sampleBufferL = [];
 let sampleBufferR = [];
-
+<br>
 let blockEnergy = [];
-
+<br>
   let blockLKFS = [];
   let valid = [];
   const G = [1.0,1.0];
   const REL_GATE_OFFSET = 10.0;
 const ABS_GATE = -70.0;
   function makeHighShelf(G,Q,fc,rate){
-
+<br>
     const A=Math.pow(10,G/40);
-
+<br>
     const w0=2*Math.PI*fc/rate;
-
+<br>
     const alpha=Math.sin(w0)/(2*Q);
-
+<br>
     const c=Math.cos(w0);
-
+<br>
     const s=Math.sqrt(A);
-
+<br>
     let b0=A*((A+1)+(A-1)*c+2*s*alpha);
     let b1=-2*A*((A-1)+(A+1)*c);
     let b2=A*((A+1)+(A-1)*c-2*s*alpha);
-
+<br>
     let a0=(A+1)-(A-1)*c+2*s*alpha;
     let a1=2*((A-1)-(A+1)*c);
     let a2=(A+1)-(A-1)*c-2*s*alpha;
-
+<br>
     return{
-
+<br>
         b:[b0/a0,b1/a0,b2/a0],
         a:[1,a1/a0,a2/a0]
-
+<br>
     };
-
+<br>
 }
-
+<br>
 function makeHighPass(Q,fc,rate){
-
+<br>
     const w0 = 2 * Math.PI * fc / rate;
-
+<br>
     const alpha = Math.sin(w0) / (2 * Q);
-
+<br>
     const c = Math.cos(w0);
-
+<br>
     let b0 = (1 + c) / 2;
     let b1 = -(1 + c);
     let b2 = (1 + c) / 2;
-
+<br>
     let a0 = 1 + alpha;
     let a1 = -2 * c;
     let a2 = 1 - alpha;
-
+<br>
     return {
-
+<br>
         b: [
             b0 / a0,
             b1 / a0,
             b2 / a0
         ],
-
+<br>
         a: [
             1,
             a1 / a0,
             a2 / a0
         ]
-
+<br>
     };
-
+<br>
 }
-
+<br>
   
   class Biquad {
-
+<br>
     constructor(b, a){
-
+<br>
         this.b0 = b[0];
         this.b1 = b[1];
         this.b2 = b[2];
-
+<br>
         this.a1 = a[1];
         this.a2 = a[2];
-
+<br>
         this.x1 = 0;
         this.x2 = 0;
-
+<br>
         this.y1 = 0;
         this.y2 = 0;
-
+<br>
     }
-
+<br>
     process(x){
-
+<br>
         const y =
             this.b0 * x +
             this.b1 * this.x1 +
             this.b2 * this.x2 -
             this.a1 * this.y1 -
             this.a2 * this.y2;
-
+<br>
         this.x2 = this.x1;
         this.x1 = x;
-
+<br>
         this.y2 = this.y1;
         this.y1 = y;
-
+<br>
         return y;
-
+<br>
     }
-
+<br>
 }
-
+<br>
   
 document.getElementById("startBtn").onclick=async()=>{
-
+<br>
     stream=await navigator.mediaDevices.getUserMedia({
         audio:{
             channelCount:2,
@@ -178,9 +178,9 @@ document.getElementById("startBtn").onclick=async()=>{
             autoGainControl:false
         }
     });
-
+<br>
     audioContext=new AudioContext();
-
+<br>
     sampleRate=audioContext.sampleRate;
   const hs = makeHighShelf(
     4.0,
@@ -188,38 +188,38 @@ document.getElementById("startBtn").onclick=async()=>{
     1500.0,
     sampleRate
 );
-
+<br>
 const hp = makeHighPass(
     0.5,
     38.0,
     sampleRate
 );
-
+<br>
 const hsL = new Biquad(hs.b, hs.a);
 const hsR = new Biquad(hs.b, hs.a);
-
+<br>
 const hpL = new Biquad(hp.b, hp.a);
 const hpR = new Biquad(hp.b, hp.a);
-
+<br>
     source=audioContext.createMediaStreamSource(stream);
-
+<br>
     processor=audioContext.createScriptProcessor(4096,2,2);
-
+<br>
     source.connect(processor);
     processor.connect(audioContext.destination);
-
+<br>
     processor.onaudioprocess=e=>{
-
+<br>
         const L=e.inputBuffer.getChannelData(0);
         const R=e.inputBuffer.numberOfChannels>1
             ?e.inputBuffer.getChannelData(1)
             :L;
-
+<br>
         pcmBuffer.push({
             left:new Float32Array(L),
             right:new Float32Array(R)
         });
-
+<br>
         // ここに後で
         // K-weighting
         // 400ms block
@@ -230,99 +230,99 @@ for(let i=0;i<L.length;i++){
   const fl = hpL.process(
     hsL.process(L[i])
 );
-
+<br>
 const fr = hpR.process(
     hsR.process(R[i])
 );
-
+<br>
    sampleBufferL.push(fl);
 sampleBufferR.push(fr);
-
+<br>
 }
-
+<br>
 const blockSamples = Math.floor(BLOCK_SEC * sampleRate);
-
+<br>
 while(sampleBufferL.length >= blockSamples){
-
+<br>
     let sum = 0;
-
+<br>
     for(let i=0;i<blockSamples;i++){
-
+<br>
         const l = sampleBufferL[i];
         const r = sampleBufferR[i];
-
+<br>
         sum += l*l;
         sum += r*r;
-
+<br>
     }
-
+<br>
    const meanSquare = sum / (blockSamples * 2);
-
+<br>
 blockEnergy.push(meanSquare);
   const lkfs =
     -0.691 +
     10.0 * Math.log10(
         Math.max(meanSquare,1e-12)
     );
-
+<br>
 blockLKFS.push(lkfs);
-
+<br>
     
-
+<br>
 for(let i=0;i<blockEnergy.length;i++){
-
+<br>
     if(blockLKFS[i] > ABS_GATE){
-
+<br>
         valid.push(blockEnergy[i]);
-
+<br>
     }
-
+<br>
 }
-
+<br>
 if(valid.length){
-
+<br>
     let sumEnergy = 0;
-
+<br>
     for(const e of valid){
-
+<br>
         sumEnergy += e;
-
+<br>
     }
-
+<br>
     const avgEnergy = sumEnergy / valid.length;
-
+<br>
     const integrated =
         -0.691 +
         10 * Math.log10(
             Math.max(avgEnergy,1e-12)
         );
-
+<br>
     document.getElementById("lkfs").innerText =
         integrated.toFixed(1);
-
+<br>
 }
-
+<br>
     const remove = Math.floor(STEP_SEC * sampleRate);
-
+<br>
     sampleBufferL.splice(0, remove);
     sampleBufferR.splice(0, remove);
-
+<br>
 }
       
-
+<br>
     };
-
+<br>
 };
-
+<br>
 document.getElementById("stopBtn").onclick=()=>{
-
+<br>
     if(processor) processor.disconnect();
     if(source) source.disconnect();
-
+<br>
     if(stream){
         stream.getTracks().forEach(t=>t.stop());
     }
-
+<br>
     if(audioContext){
         audioContext.close();
     }
@@ -330,25 +330,26 @@ audioContext = null;
 processor = null;
 source = null;
 stream = null;
-
+<br>
 sampleBufferL = [];
 sampleBufferR = [];
 blockEnergy = [];
   blockLKFS = [];
 };
-
+<br>
 document.getElementById("resetBtn").onclick=()=>{
 pcmBuffer=[];
-
+<br>
 sampleBufferL=[];
 sampleBufferR=[];
 blockEnergy=[];
-
+<br>
 document.getElementById("lkfs").innerText="--.-";
-
+<br>
 };
-
+<br>
 </script>
-
+<br>
 </body>
 </html>
+<br>
