@@ -1,196 +1,454 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PLAY - Sampler</title>
-    <style>
-        * {
-            -webkit-tap-highlight-color: transparent;
-            box-sizing: border-box;
-        }
-        body {
-            background-color: #000;
-            color: white;
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: sans-serif;
-            overflow: hidden;
-            user-select: none;
-        }
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-        #play-button {
-            width: 85vw;
-            height: 55vh;
-            background-color: #1a1a1a;
-            border: 6px solid #333;
-            border-radius: 50px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: background-color 0.1s, transform 0.1s;
-        }
+<title>ハンドベル</title>
 
-        .btn-label { font-size: 15vw; font-weight: bold; color: #444; }
-        .file-display { font-size: 3.5vw; margin-top: 20px; color: #333; text-transform: uppercase; font-weight: bold; }
+<style>
+    * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+    }
 
-        /* 準備完了：緑 */
-        #play-button.ready {
-            background-color: #004d00;
-            border-color: #00cc00;
-        }
-        #play-button.ready .btn-label { color: #00cc00; }
-        #play-button.ready .file-display { color: #008800; }
+    body {
+        margin: 0;
+        background: #111;
+        color: white;
+        font-family: sans-serif;
+        text-align: center;
+        touch-action: manipulation;
+    }
 
-        /* 押し込み：エンジ */
-        #play-button.pressing {
-            background-color: #8b0000;
-            transform: scale(0.92);
-        }
+    h1 {
+        margin: 18px 0 8px;
+        font-size: 26px;
+    }
 
-        /* 発火：鮮烈な赤 */
-        #play-button.active {
-            background-color: #ff0000 !important;
-            border-color: #ffffff !important;
-        }
-        #play-button.active .btn-label, #play-button.active .file-display { color: #ffffff !important; }
+    #current {
+        font-size: 56px;
+        font-weight: bold;
+        margin: 10px 0 20px;
+    }
 
-        /* ロック：暗い赤 */
-        #play-button.locking {
-            background-color: #330000;
-            border-color: #660000;
-        }
-        #play-button.locking .btn-label, #play-button.locking .file-display { color: #660000; }
+    #status {
+        font-size: 15px;
+        color: #aaa;
+        margin-bottom: 15px;
+    }
 
-        #status { margin-top: 30px; font-size: 14px; color: #666; font-family: monospace; }
-    </style>
+    #enable {
+        font-size: 18px;
+        padding: 14px 25px;
+        border-radius: 10px;
+        border: none;
+        background: #444;
+        color: white;
+        margin-bottom: 20px;
+    }
+
+    .notes {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 10px;
+        max-width: 500px;
+        margin: auto;
+    }
+
+    .note {
+        height: 60px;
+        border: none;
+        border-radius: 10px;
+        background: #333;
+        color: white;
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    .note:active {
+        background: #777;
+        transform: scale(0.95);
+    }
+
+    .note.selected {
+        background: #eee;
+        color: #111;
+    }
+
+    #bell {
+        margin: 20px auto;
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        background: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 60px;
+    }
+
+    #bell.ringing {
+        transform: rotate(-15deg);
+    }
+
+    .hint {
+        color: #888;
+        font-size: 14px;
+        padding: 0 20px 20px;
+    }
+</style>
 </head>
+
 <body>
 
-    <div id="play-button">
-        <div class="btn-label">PLAY</div>
-        <div id="target-name" class="file-display">NO FILE</div>
-    </div>
+<h1>🔔 ハンドベル</h1>
 
-    <div id="status">INITIALIZING...</div>
+<div id="current">C4</div>
 
-    <script>
-        // --- 音源が置いてあるリポジトリのURL ---
-        const SOUND_BASE_URL = "https://mok2884.github.io/sampl-sounds/";
+<div id="status">
+    音を選んでください
+</div>
 
-        const playButton = document.getElementById('play-button');
-        const targetDisplay = document.getElementById('target-name');
-        const statusText = document.getElementById('status');
-        
-        let audioContext;
-        let audioBuffer = null;
-        let isLocking = false;
-        let wakeLock = null;
+<button id="enable">
+    センサーを有効にする
+</button>
 
-        // URLの末尾 (?file=xxx.wav) からファイル名を取得
-        const urlParams = new URLSearchParams(window.location.search);
-        const fileName = urlParams.get('file');
+<div id="bell">🔔</div>
 
-        const requestWakeLock = async () => {
-            try {
-                if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) {}
-        };
+<div class="notes" id="notes"></div>
 
-        const setupAudio = async (arrayBuffer) => {
-            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            try {
-                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                playButton.classList.add('ready');
-                statusText.innerText = "STANDBY OK";
-                requestWakeLock();
-            } catch (e) { 
-                statusText.innerText = "DECODE ERROR"; 
-            }
-        };
+<div class="hint">
+    音を選んだら、スマホをハンドベルのように振ってください。
+</div>
 
-        // GitHubから音源を自動取得
-        const loadSound = async () => {
-            if (!fileName) {
-                statusText.innerText = "ERROR: NO FILE SPECIFIED";
-                targetDisplay.innerText = "ADD ?file=filename.wav TO URL";
-                return;
-            }
+<script>
 
-            const fileTitle = fileName.split('.')[0]; // 拡張子を除いた名前を表示用にする
-            targetDisplay.innerText = fileTitle;
-            statusText.innerText = "LOADING...";
+let audioContext = null;
+let currentNote = "C4";
 
-            try {
-                // 音源リポジトリからフェッチ
-                const response = await fetch(SOUND_BASE_URL + fileName);
-                if (!response.ok) throw new Error("File not found");
-                const arrayBuffer = await response.arrayBuffer();
-                await setupAudio(arrayBuffer);
-            } catch (e) {
-                statusText.innerText = "LOAD FAILED: " + fileName;
-                targetDisplay.innerText = "NOT FOUND";
-            }
-        };
+let lastShake = 0;
 
-        const triggerSequence = () => {
-            if (!audioBuffer || isLocking) return;
-            if (audioContext.state === 'suspended') audioContext.resume();
+// 振動検出用
+let lastMagnitude = 0;
+let shakeThreshold = 16;
 
-            isLocking = true;
-            playButton.classList.add('pressing');
+// 音名
+const noteNames = [
+    "C", "C#", "D", "D#", "E", "F",
+    "F#", "G", "G#", "A", "A#", "B"
+];
 
-            // 物理ボタン風の120msディレイ
-            setTimeout(() => {
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-                source.start(0);
+// C4 ～ B5
+const notes = [];
 
-                playButton.classList.remove('pressing');
-                playButton.classList.add('active');
+for (let octave = 4; octave <= 5; octave++) {
+    for (let n of noteNames) {
+        notes.push(n + octave);
+    }
+}
 
-                setTimeout(() => {
-                    playButton.classList.remove('active');
-                    playButton.classList.add('locking');
-                }, 150);
 
-            }, 120);
+// ----------------------------
+// 音程 → 周波数
+// ----------------------------
 
-            // 1秒間の連打防止ロック
-            setTimeout(() => {
-                isLocking = false;
-                playButton.classList.remove('locking');
-            }, 1000);
-        };
+function frequency(note) {
 
-        const handleInteraction = (e) => {
-            e.preventDefault();
-            triggerSequence();
-        };
+    const match = note.match(/^([A-G]#?)([0-9])$/);
 
-        playButton.addEventListener('touchstart', handleInteraction, {passive: false});
-        playButton.addEventListener('mousedown', handleInteraction);
+    const name = match[1];
+    const octave = Number(match[2]);
 
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' || e.code === 'Enter') {
-                e.preventDefault();
-                triggerSequence();
-            }
-        });
+    const index = noteNames.indexOf(name);
 
-        // 起動時にロード
-        loadSound();
+    // A4 = 440Hz
+    const midi = (octave + 1) * 12 + index;
 
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') requestWakeLock();
-        });
-    </script>
+    return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+
+// ----------------------------
+// ボタン生成
+// ----------------------------
+
+const notesContainer = document.getElementById("notes");
+
+notes.forEach(note => {
+
+    const button = document.createElement("button");
+
+    button.className = "note";
+    button.textContent = note;
+
+    button.addEventListener("click", () => {
+
+        currentNote = note;
+
+        document.getElementById("current").textContent = note;
+
+        document.querySelectorAll(".note")
+            .forEach(b => b.classList.remove("selected"));
+
+        button.classList.add("selected");
+
+        document.getElementById("status").textContent =
+            "設定：" + note;
+
+        // ボタンを押したときにも軽く鳴らす
+        playBell(note, 0.8);
+    });
+
+    notesContainer.appendChild(button);
+});
+
+
+// 初期選択
+document.querySelector(".note").classList.add("selected");
+
+
+// ----------------------------
+// AudioContext
+// ----------------------------
+
+function initAudio() {
+
+    if (!audioContext) {
+        audioContext =
+            new (window.AudioContext ||
+                 window.webkitAudioContext)();
+    }
+
+    if (audioContext.state === "suspended") {
+        audioContext.resume();
+    }
+}
+
+
+// ----------------------------
+// ハンドベル音
+// ----------------------------
+
+function playBell(note, volume = 1) {
+
+    initAudio();
+
+    const ctx = audioContext;
+
+    const now = ctx.currentTime;
+
+    const f = frequency(note);
+
+    const master = ctx.createGain();
+
+    master.gain.setValueAtTime(0, now);
+
+    master.gain.linearRampToValueAtTime(
+        0.45 * volume,
+        now + 0.005
+    );
+
+    master.gain.exponentialRampToValueAtTime(
+        0.001,
+        now + 2.2
+    );
+
+    master.connect(ctx.destination);
+
+
+    // 金属的な倍音
+    const partials = [
+        { ratio: 1.00, gain: 1.0 },
+        { ratio: 2.01, gain: 0.55 },
+        { ratio: 3.01, gain: 0.30 },
+        { ratio: 4.02, gain: 0.18 },
+        { ratio: 5.03, gain: 0.10 },
+        { ratio: 7.02, gain: 0.06 }
+    ];
+
+
+    partials.forEach(p => {
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "sine";
+
+        osc.frequency.setValueAtTime(
+            f * p.ratio,
+            now
+        );
+
+        gain.gain.setValueAtTime(
+            p.gain,
+            now
+        );
+
+        osc.connect(gain);
+        gain.connect(master);
+
+        osc.start(now);
+        osc.stop(now + 2.3);
+    });
+
+
+    // 高域の「チン」というアタック音
+    const attack = ctx.createOscillator();
+    const attackGain = ctx.createGain();
+
+    attack.type = "triangle";
+
+    attack.frequency.setValueAtTime(
+        f * 8,
+        now
+    );
+
+    attackGain.gain.setValueAtTime(
+        0.12 * volume,
+        now
+    );
+
+    attackGain.gain.exponentialRampToValueAtTime(
+        0.001,
+        now + 0.25
+    );
+
+    attack.connect(attackGain);
+    attackGain.connect(ctx.destination);
+
+    attack.start(now);
+    attack.stop(now + 0.3);
+
+
+    // 見た目
+    const bell = document.getElementById("bell");
+
+    bell.classList.add("ringing");
+
+    setTimeout(() => {
+        bell.classList.remove("ringing");
+    }, 120);
+}
+
+
+// ----------------------------
+// センサー
+// ----------------------------
+
+function startSensor() {
+
+    initAudio();
+
+    if (typeof DeviceMotionEvent === "undefined") {
+
+        document.getElementById("status").textContent =
+            "この端末ではモーションセンサーが使えません";
+
+        return;
+    }
+
+
+    // iPhone系
+    if (
+        typeof DeviceMotionEvent.requestPermission === "function"
+    ) {
+
+        DeviceMotionEvent.requestPermission()
+            .then(permission => {
+
+                if (permission === "granted") {
+
+                    window.addEventListener(
+                        "devicemotion",
+                        handleMotion
+                    );
+
+                    document.getElementById("status").textContent =
+                        "準備完了！スマホを振ってください";
+                }
+
+            })
+            .catch(() => {
+
+                document.getElementById("status").textContent =
+                    "センサーが許可されませんでした";
+            });
+
+    } else {
+
+        window.addEventListener(
+            "devicemotion",
+            handleMotion
+        );
+
+        document.getElementById("status").textContent =
+            "準備完了！スマホを振ってください";
+    }
+}
+
+
+// ----------------------------
+// 振動検出
+// ----------------------------
+
+function handleMotion(event) {
+
+    const acc = event.accelerationIncludingGravity;
+
+    if (!acc) return;
+
+    const x = acc.x || 0;
+    const y = acc.y || 0;
+    const z = acc.z || 0;
+
+    const magnitude =
+        Math.sqrt(x*x + y*y + z*z);
+
+
+    // 急激な変化
+    const delta =
+        Math.abs(magnitude - lastMagnitude);
+
+    lastMagnitude = magnitude;
+
+
+    if (delta > shakeThreshold) {
+
+        const now = Date.now();
+
+        // 連続誤検出防止
+        if (now - lastShake > 280) {
+
+            lastShake = now;
+
+            // 振る強さ
+            let volume =
+                Math.min(delta / 20, 1.4);
+
+            playBell(
+                currentNote,
+                volume
+            );
+        }
+    }
+}
+
+
+// ----------------------------
+// センサー開始ボタン
+// ----------------------------
+
+document.getElementById("enable")
+    .addEventListener("click", () => {
+
+        startSensor();
+
+    });
+
+</script>
+
 </body>
 </html>
