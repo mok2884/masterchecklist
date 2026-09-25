@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Time Pro - Final Production</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/ds-digital" rel="stylesheet">
     <style>
         :root {
             --bg-base: #B2DFDB; 
@@ -244,9 +245,138 @@
     flex: 1;  accent-color: #00897B;
 }
         
-    </style>
+    
+/* ===== STOPWATCH / LARGE: source design ===== */
+#mode-selector-wrap { position: fixed; top: 25px; left: 25px; width: 80px; height: 80px; z-index: 120; }
+#mode-selector {
+    width: 80px; height: 80px;
+    background: linear-gradient(145deg, #80CBC4, #4DB6AC);
+    border-radius: 50%; border: 3px solid #00796B;
+    position: relative; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    display: flex; align-items: center; justify-content: center;
+    box-sizing: border-box;
+}
+#mode-selector.large-dark-lever { background:#222222 !important; border-color:#444444 !important; box-shadow:0 4px 10px rgba(0,0,0,0.4); }
+#mode-selector.large-dark-lever #lever-knob { background:linear-gradient(to right,#555,#333,#555) !important; }
+#mode-selector.large-dark-lever #lever-knob::after { background:radial-gradient(circle,#555 0%,#333 100%) !important; border-color:#707070 !important; }
+#lever-knob {
+    width:10px; height:60px; background:linear-gradient(to right,#f0f0f0,#bbb,#f0f0f0);
+    border-radius:5px; box-shadow:2px 0 5px rgba(0,0,0,0.2);
+    transition:transform .3s cubic-bezier(.175,.885,.32,1.275); transform-origin:center center; position:relative;
+}
+#lever-knob::after {
+    content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:20px; height:20px; background:radial-gradient(circle,#f0f0f0 0%,#bbb 100%);
+    border-radius:50%; border:2px solid #999; box-shadow:0 2px 4px rgba(0,0,0,.3);
+}
+#sw-overlay{
+    position:fixed;inset:0;z-index:100;background:#ECEFF1;color:#263238;
+    display:none;align-items:center;justify-content:center;flex-direction:column;
+    gap:14px;font-family:'Inter',sans-serif;box-sizing:border-box;
+}
+#sw-console{width:480px;box-sizing:border-box;padding:25px;display:flex;flex-direction:column;gap:25px;}
+#sw-title{font-weight:800;letter-spacing:2px;text-align:center;}
+#sw-main-display{
+    font-variant-numeric:tabular-nums;font-size:clamp(4rem,15vw,7rem);
+    font-weight:700;line-height:1;text-align:center;
+}
+#sw-main-display.running-text{color:#D32F2F;}
+#sw-input{
+    width:250px;height:50px;border:2px solid #90A4AE;border-radius:10px;
+    text-align:center;font-size:1.7rem;font-weight:700;background:#fff;
+    margin:0 auto;box-sizing:border-box;
+}
+#sw-controls,#sw-units{display:flex;gap:10px;justify-content:center;}
+#sw-controls button{
+    min-width:115px;height:54px;border:0;border-radius:12px;
+    background:#546E7A;color:#fff;font-weight:800;
+}
+#sw-units button{
+    border:0;border-radius:8px;padding:8px 18px;background:#B0BEC5;font-weight:800;
+}
+#sw-keypad{display:grid;grid-template-columns:repeat(3,68px);gap:7px;justify-content:center;}
+#sw-keypad button{
+    height:48px;border:0;border-radius:9px;background:#CFD8DC;
+    font-size:1.1rem;font-weight:800;
+}
+#large-sw-overlay{
+    position:fixed;inset:0;background:#000;z-index:100;
+    display:none;flex-direction:column;align-items:center;justify-content:center;
+    box-sizing:border-box;overflow:hidden;padding-bottom:50px;
+}
+#large-time-container{
+    position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%) rotate(90deg);
+    transform-origin:center center;white-space:nowrap;
+}
+#large-main-time{
+    display:flex;align-items:center;justify-content:center;
+    font-size:11rem;font-family:'DS-Digital',monospace;color:#fff;
+    border:4px solid #fff;border-radius:20px;padding:35px 55px;
+    background:rgba(255,255,255,.05);
+}
+#large-main-time .digit{
+    width:80px;text-align:right;display:inline-block;margin:0 13px;
+    font-style:italic;color:#ff4500;font-family:'DS-Digital',monospace;
+}
+#large-main-time .separator{
+    width:58px;text-align:right;display:inline-block;font-size:1em;
+    font-weight:bold;color:#f00;padding-left:6px;font-family:'DS-Digital',monospace;
+}
+#large-sub-label{
+    margin-top:15px;color:#fff;font-size:2.2rem;font-weight:bold;
+    letter-spacing:2px;text-align:center;opacity:.8;width:100%;
+}
+#large-reset-btn{
+    position:absolute;bottom:25px;right:25px;width:70px;height:35px;
+    background:rgba(255,255,255,.1);border:1.5px solid #707070;border-radius:8px;
+    color:#888;font-size:.75rem;font-weight:bold;display:flex;align-items:center;
+    justify-content:center;z-index:110;cursor:pointer;
+}
+@media (max-width:600px){#sw-console{width:100%;padding:20px;}}
+</style>
 </head>
 <body>
+
+    <div id="mode-selector-wrap">
+        <div id="mode-selector" onpointerdown="cycleAddedMode(event)"><div id="lever-knob"></div></div>
+    </div>
+
+    <div id="sw-overlay">
+        <div id="sw-console">
+            <div id="sw-title">STOPWATCH</div>
+            <div id="sw-main-display">00:00:00</div>
+            <input id="sw-input" inputmode="numeric" maxlength="6" placeholder="HHMMSS">
+            <div id="sw-controls">
+                <button onpointerdown="addedSWStartStop(event)">START / STOP</button>
+                <button onpointerdown="addedSWReset(event)">RESET</button>
+            </div>
+            <div id="sw-units">
+                <button onpointerdown="addedSWUnit('h',event)">時</button>
+                <button onpointerdown="addedSWUnit('m',event)">分</button>
+                <button onpointerdown="addedSWUnit('s',event)">秒</button>
+            </div>
+            <div id="sw-keypad">
+                <button onpointerdown="addedSWNum(1,event)">1</button><button onpointerdown="addedSWNum(2,event)">2</button><button onpointerdown="addedSWNum(3,event)">3</button>
+                <button onpointerdown="addedSWNum(4,event)">4</button><button onpointerdown="addedSWNum(5,event)">5</button><button onpointerdown="addedSWNum(6,event)">6</button>
+                <button onpointerdown="addedSWNum(7,event)">7</button><button onpointerdown="addedSWNum(8,event)">8</button><button onpointerdown="addedSWNum(9,event)">9</button>
+                <button onpointerdown="addedSWClear(event)">C</button><button onpointerdown="addedSWNum(0,event)">0</button><button onpointerdown="addedSWBack(event)">←</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="large-sw-overlay">
+       <div id="large-reset-btn">RESET</div>
+        <div id="large-time-container">
+            <div id="large-main-time">
+                <span class="digit">0</span><span class="digit">0</span><span class="separator">:</span>
+                <span class="digit">0</span><span class="digit">0</span><span class="separator">:</span>
+                <span class="digit">0</span><span class="digit">0</span>
+            </div>
+            <div id="large-sub-label">REAL TIME / TIMER</div>
+        </div>
+    </div>
+
 
     <div id="bg-wipe-layer"></div>
 
@@ -304,6 +434,191 @@
 
     <script>
         let swRunning = false, swStartTime = 0, swElapsedMs = 0, swInterval = null;
+
+        // ===== 独立 STOPWATCH / LARGE =====
+        let addedSwRunning=false, addedSwStartTime=0, addedSwElapsedMs=0, addedSwInterval=null, addedSwInput='';
+        let addedMode='BASE';
+        const addedSWMain=document.getElementById('sw-main-display');
+        const addedSWInput=document.getElementById('sw-input');
+        const addedLarge=document.getElementById('large-sw-overlay');
+        const addedLargeMain=document.getElementById('large-main-time');
+        const addedLever=document.getElementById('lever-knob');
+        const addedModeSelector=document.getElementById('mode-selector');
+        const addedSWOverlay=document.getElementById('sw-overlay');
+
+        function cycleAddedMode(e){
+            if(e)e.preventDefault();
+            if(addedMode==='BASE') setAddedMode('SW');
+            else if(addedMode==='SW') setAddedMode('LARGE');
+            else setAddedMode('BASE');
+        }
+        function setAddedMode(mode){
+            addedMode=mode;
+            if(mode==='BASE'){
+                addedSWOverlay.style.display='none';
+                addedLarge.style.display='none';
+                document.querySelector('.console').style.display='';
+                document.querySelector('.shortcut-btns').style.display='';
+                document.getElementById('time-log').style.display='';
+                document.body.style.backgroundColor='var(--bg-base)';
+                addedModeSelector.classList.remove('large-dark-lever');
+                addedLever.style.transform='rotate(-45deg)';
+            }else if(mode==='SW'){
+                addedSWOverlay.style.display='flex';
+                addedLarge.style.display='none';
+                document.querySelector('.console').style.display='none';
+                document.querySelector('.shortcut-btns').style.display='none';
+                document.getElementById('time-log').style.display='none';
+                document.body.style.backgroundColor='#ECEFF1';
+                addedModeSelector.classList.remove('large-dark-lever');
+                addedLever.style.transform='rotate(15deg)';
+                updateAddedSWDisplay();
+            }else{
+                addedSWOverlay.style.display='none';
+                addedLarge.style.display='flex';
+                document.querySelector('.console').style.display='none';
+                document.querySelector('.shortcut-btns').style.display='none';
+                document.getElementById('time-log').style.display='none';
+                document.body.style.backgroundColor='#000';
+                addedModeSelector.classList.add('large-dark-lever');
+                addedLever.style.transform='rotate(45deg)';
+                updateAddedSWDisplay();
+                autoScaleAddedLarge();
+            }
+        }
+        function addedSWNum(n,e){
+            if(e)e.preventDefault();
+            if(addedSwRunning)return;
+            if(addedSwInput.length>=6)return;
+            addedSwInput+=String(n);
+            addedSWInput.value=addedSwInput;
+        }
+        function addedSWBack(e){
+            if(e)e.preventDefault();
+            if(addedSwRunning)return;
+            addedSwInput=addedSwInput.slice(0,-1);
+            addedSWInput.value=addedSwInput;
+        }
+        function addedSWClear(e){
+            if(e)e.preventDefault();
+            if(addedSwRunning)return;
+            addedSwInput='';
+            addedSWInput.value='';
+        }
+        function addedSWUnit(unit,e){
+            if(e)e.preventDefault();
+            if(addedSwRunning || !addedSwInput)return;
+            const n=Number(addedSwInput);
+            let seconds=0;
+            if(unit==='h')seconds=n*3600;
+            if(unit==='m')seconds=n*60;
+            if(unit==='s')seconds=n;
+            seconds=Math.min(seconds,99*3600+59*60+59);
+            const h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60),ss=seconds%60;
+            addedSwInput=String(h).padStart(2,'0')+String(m).padStart(2,'0')+String(ss).padStart(2,'0');
+            addedSWInput.value=addedSwInput;
+        }
+        function addedInputToMs(){
+            const n=addedSwInput.replace(/\D/g,'').slice(0,6).padStart(6,'0');
+            const h=Number(n.slice(0,2)),m=Number(n.slice(2,4)),ss=Number(n.slice(4,6));
+            return ((h*60+m)*60+ss)*1000;
+        }
+        function addedSWStartStop(e){
+            if(e)e.preventDefault();
+            if(addedSwRunning){
+                addedSwElapsedMs=Date.now()-addedSwStartTime;
+                addedSwRunning=false;
+                clearInterval(addedSwInterval);addedSwInterval=null;
+            }else{
+                if(addedSwInput){
+                    addedSwElapsedMs=addedInputToMs();
+                    addedSwInput='';
+                    addedSWInput.value='';
+                }
+                addedSwStartTime=Date.now()-addedSwElapsedMs;
+                addedSwRunning=true;
+                clearInterval(addedSwInterval);
+                addedSwInterval=setInterval(updateAddedSWDisplay,10);
+            }
+            updateAddedSWDisplay();
+        }
+        function addedSWReset(e){
+            if(e)e.preventDefault();
+            addedSwRunning=false;
+            clearInterval(addedSwInterval);addedSwInterval=null;
+            addedSwElapsedMs=0;
+            addedSwStartTime=0;
+            addedSwInput='';
+            addedSWInput.value='';
+            addedLastBlinkSecond=-1;
+            updateAddedSWDisplay();
+        }
+        function updateAddedSWDisplay(){
+            if(addedSwRunning)addedSwElapsedMs=Date.now()-addedSwStartTime;
+            const total=Math.floor(addedSwElapsedMs/1000),h=Math.floor(total/3600),m=Math.floor(total%3600/60),sec=total%60;
+            addedSWMain.textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+            addedSWMain.classList.toggle('running-text',addedSwRunning);
+            const t=String(h).padStart(2,'0')+String(m).padStart(2,'0')+String(sec).padStart(2,'0');
+            addedLargeMain.querySelectorAll('.digit').forEach((el,i)=>el.textContent=t[i]);
+
+            if(addedSwRunning && sec!==addedLastBlinkSecond){
+                addedLastBlinkSecond=sec;
+                addedLargeMain.querySelectorAll('.separator').forEach(el=>{
+                    el.style.opacity='1';
+                    el.style.color='#ff2222';
+                    el.style.textShadow='0 0 8px rgba(255,0,0,.9),0 0 16px rgba(255,0,0,.55)';
+                });
+                setTimeout(()=>{
+                    if(!addedSwRunning)return;
+                    addedLargeMain.querySelectorAll('.separator').forEach(el=>{
+                        el.style.opacity='0.2';
+                        el.style.textShadow='none';
+                    });
+                },500);
+            }
+            if(!addedSwRunning){
+                addedLargeMain.querySelectorAll('.separator').forEach(el=>{
+                    el.style.opacity='0.2';
+                    el.style.textShadow='none';
+                });
+            }
+        }
+        let addedLastBlinkSecond=-1;
+        function addedLargeReset(e){
+            if(e)e.stopPropagation();
+            addedSwRunning=false;
+            addedLastBlinkSecond=-1;
+            clearInterval(addedSwInterval);addedSwInterval=null;
+            addedSwElapsedMs=0;
+            addedSwStartTime=0;
+            addedSwInput='';
+            addedSWInput.value='';
+            updateAddedSWDisplay();
+        }
+
+        // LARGE本体を触ってもSTART/STOPしない。RESETだけ有効。
+        addedLarge.addEventListener('pointerdown',function(e){
+            if(e.target.closest('#large-reset-btn')){
+                e.preventDefault();
+                addedLargeReset(e);
+                return;
+            }
+            e.preventDefault();
+        });
+
+        function autoScaleAddedLarge(){
+            const baseWidth=800,baseHeight=450;
+            const targetWidth=window.innerHeight*0.80;
+            const targetHeight=window.innerWidth*0.95;
+            let scale=Math.min(targetWidth/baseWidth,targetHeight/baseHeight);
+            scale=Math.min(scale,1);
+            const c=document.getElementById('large-time-container');
+            if(c)c.style.transform=`translate(-50%,-50%) rotate(90deg) scale(${scale})`;
+        }
+        window.addEventListener('resize',autoScaleAddedLarge);
+        window.addEventListener('orientationchange',()=>setTimeout(autoScaleAddedLarge,100));
+        setAddedMode('BASE');
+
         const mainDisplay = document.getElementById('main-time'), clockDisplay = document.getElementById('clock-val');
         const bgLayer = document.getElementById('bg-wipe-layer'), uraText = document.getElementById('ura-text');
         const resetBtn = document.getElementById('reset-btn'), startStopBtn = document.getElementById('start-stop-btn');
@@ -518,6 +833,25 @@ if (minute === 59) {
         }
         setInterval(updateClock, 200);
         updateClock();
-    </script>
+    
+        function autoScaleLargeTimer() {
+            const baseWidth = 800;
+            const baseHeight = 450;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const targetWidth = windowHeight * 0.80;
+            const targetHeight = windowWidth * 0.95;
+            const scaleX = targetWidth / baseWidth;
+            const scaleY = targetHeight / baseHeight;
+            let finalScale = Math.min(scaleX, scaleY);
+            finalScale = Math.min(finalScale, 1.0);
+            const largeContainer = document.getElementById('large-time-container');
+            if (largeContainer) {
+                largeContainer.style.transform = `translate(-50%, -50%) rotate(90deg) scale(${finalScale})`;
+            }
+        }
+        window.addEventListener('load', autoScaleLargeTimer);
+        window.addEventListener('resize', autoScaleLargeTimer);
+</script>
 </body>
 </html>
