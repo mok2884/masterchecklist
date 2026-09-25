@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Time Pro - Final Production</title>
+    <meta name="theme-color" content="#B2DFDB">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.cdnfonts.com/css/ds-digital" rel="stylesheet">
     <style>
@@ -465,6 +466,7 @@
             addedMode=mode;
             if(mode==='BASE'){
                 addedSWOverlay.style.display='none';
+                                document.querySelector('meta[name="theme-color"]').setAttribute('content','#B2DFDB');
                 addedLarge.style.display='none';
                 document.querySelector('.console').style.display='';
                 document.querySelector('.shortcut-btns').style.display='';
@@ -485,6 +487,7 @@
             }else{
                 addedSWOverlay.style.display='none';
                 addedLarge.style.display='flex';
+                                document.querySelector('meta[name="theme-color"]').setAttribute('content','#000');
                 document.querySelector('.console').style.display='none';
                 document.querySelector('.shortcut-btns').style.display='none';
                 document.getElementById('time-log').style.display='none';
