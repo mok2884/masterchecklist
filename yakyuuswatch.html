@@ -299,7 +299,14 @@
     height:48px;border:0;border-radius:9px;background:#CFD8DC;
     font-size:1.1rem;font-weight:800;
 }
-#large-sw-overlay{
+#large-alert-bg{
+    position:absolute;
+    inset:0;
+    background:#000;
+    z-index:0;
+}
+        
+        #large-sw-overlay{
     position:fixed;inset:0;background:#000;z-index:100;
     display:none;flex-direction:column;align-items:center;justify-content:center;
     box-sizing:border-box;overflow:hidden;padding-bottom:50px;
@@ -308,12 +315,13 @@
     position:absolute;top:50%;left:50%;
     transform:translate(-50%,-50%) rotate(90deg);
     transform-origin:center center;white-space:nowrap;
+    z-index:1;
 }
 #large-main-time{
     display:flex;align-items:center;justify-content:center;
     font-size:11rem;font-family:'DS-Digital',monospace;color:#fff;
     border:4px solid #fff;border-radius:20px;padding:35px 55px;
-    background:rgba(255,255,255,.05);
+    background:#0d0d0d;
 }
 #large-main-time .digit{
     width:80px;text-align:right;display:inline-block;margin:0 13px;
@@ -366,6 +374,7 @@
     </div>
 
     <div id="large-sw-overlay">
+        <div id="large-alert-bg"></div>
        <div id="large-reset-btn">RESET</div>
         <div id="large-time-container">
             <div id="large-main-time">
@@ -553,6 +562,20 @@
             addedLastBlinkSecond=-1;
             updateAddedSWDisplay();
         }
+       function updateLargeTimeAlert(){
+    if(addedMode !== 'LARGE') return;
+
+    const total = Math.floor(addedSwElapsedMs / 1000);
+    const secondInHour = total % 3600;
+
+   if(secondInHour >= 55 * 60 && secondInHour < 58 * 60){
+    document.getElementById('large-alert-bg').style.background = '#1565C0';
+}else if(secondInHour >= 58 * 60 && secondInHour < 3600){
+    document.getElementById('large-alert-bg').style.background = '#D50000';
+}else{
+    document.getElementById('large-alert-bg').style.background = '#000';
+}
+}
         function updateAddedSWDisplay(){
             if(addedSwRunning)addedSwElapsedMs=Date.now()-addedSwStartTime;
             const total=Math.floor(addedSwElapsedMs/1000),h=Math.floor(total/3600),m=Math.floor(total%3600/60),sec=total%60;
@@ -831,6 +854,8 @@ if (minute === 59) {
                 resetBtn.innerText = "RESET";
             }
         }
+        setInterval(updateLargeTimeAlert, 200);
+updateLargeTimeAlert();
         setInterval(updateClock, 200);
         updateClock();
     
