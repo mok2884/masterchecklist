@@ -447,12 +447,14 @@
           dEdge:'#f00f0f', /* 数字の色(線の端)。赤寄り14で決めた色 */
           dMid:'#ff5b4d',  /* 数字の色(線の真ん中の光る所)。赤寄り14・光のつよさ22で決めた色 */
           dW:20,       /* 光る幅(%)。真ん中の明るい部分の広さ */
-          cr:9,        /* コロンの大きさ */
+          cr:10.5,     /* コロンの大きさ */
           cs:54,       /* コロンの縦の間 */
           cy:3,        /* コロンの上下の位置(マイナスで上へ) */
-          cCol:'#c0082e', /* コロンの色 */
+          cCol:'#b1072a', /* コロンの色(明るさ92) */
+          cHi:'#d14452',  /* コロンの玉の真ん中(玉の中の光92) */
+          cLo:'#78051c',  /* コロンの玉のふち(玉の中の光92) */
           cGlow:6.25,  /* コロンのにじみの広がり(ぼかしは使わない) */
-          cHalo:.55,   /* コロンのにじみの濃さ(0でにじみなし) */
+          cHalo:.4,    /* コロンのにじみの濃さ(0でにじみなし) */
           cOff:.2      /* コロンが消えているときの濃さ */
         };
         function seg7(box){
@@ -472,6 +474,7 @@
           const p1=(0.5-SEG.dW/200).toFixed(3),p2=(0.5+SEG.dW/200).toFixed(3);
           const grad=(id,v)=>'<linearGradient id="'+id+'" x1="0" y1="0" x2="'+(v?0:1)+'" y2="'+(v?1:0)+'"><stop offset="0" stop-color="'+SEG.dEdge+'"/><stop offset="'+p1+'" stop-color="'+SEG.dMid+'"/><stop offset="'+p2+'" stop-color="'+SEG.dMid+'"/><stop offset="1" stop-color="'+SEG.dEdge+'"/></linearGradient>';
           svg.innerHTML='<defs>'+grad('sgH',0)+grad('sgV',1)+
+            '<radialGradient id="sgD" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="'+SEG.cHi+'"/><stop offset=".55" stop-color="'+SEG.cCol+'"/><stop offset="1" stop-color="'+SEG.cLo+'"/></radialGradient>'+
             '<radialGradient id="sgR"><stop offset="0" stop-color="'+SEG.cCol+'" stop-opacity="'+SEG.cHalo+'"/><stop offset=".45" stop-color="'+SEG.cCol+'" stop-opacity="'+(SEG.cHalo*.45)+'"/><stop offset="1" stop-color="'+SEG.cCol+'" stop-opacity="0"/></radialGradient></defs>';
           let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
           const digs=xs.map(x0=>{
@@ -485,7 +488,7 @@
             const g=document.createElementNS(NS,'g');
             [M+SEG.cy-SEG.cs/2,M+SEG.cy+SEG.cs/2].forEach(y=>{
               const h=document.createElementNS(NS,'circle');h.setAttribute('cx',c0+off/2);h.setAttribute('cy',y);h.setAttribute('r',SEG.cr+SEG.cGlow*2.4);h.setAttribute('fill','url(#sgR)');g.appendChild(h);
-              const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill',SEG.cCol);g.appendChild(c)});
+              const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill','url(#sgD)');g.appendChild(c)});
             svg.appendChild(g);return g;
           });
           box.textContent='';box.appendChild(svg);
