@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 <html lang="ja">
@@ -8,7 +7,6 @@
     <title>Time Pro - Final Production</title>
    <meta name="theme-color" content="#000000">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.cdnfonts.com/css/ds-digital" rel="stylesheet">
     <style>
         :root {
             --bg-base: #B2DFDB; 
@@ -318,20 +316,17 @@
     transform-origin:center center;white-space:nowrap;
     z-index:1;
 }
+/* ===== 大画面の数字の枠(タイマーと同じ比率) =====
+   枠の色:明るさ85の白(#d9d9d9)。背景が青・赤のときもこのまま
+   枠のまわりの光:ふだんと青のときは小さい光(広がり61・濃さ100)。赤のときは強い白い光(JSで付ける) */
 #large-main-time{
     display:flex;align-items:center;justify-content:center;
-    font-size:11rem;font-family:'DS-Digital',monospace;color:#fff;
-    border:4px solid #fff;border-radius:20px;padding:35px 55px;
-    background:#0d0d0d;
+    font-size:167.5px;
+    border:4px solid #d9d9d9;border-radius:.114em;padding:.3em .42em;
+    background:#000;
+    box-shadow:0 0 .0732em rgba(217,217,217,.8);
 }
-#large-main-time .digit{
-    width:80px;text-align:right;display:inline-block;margin:0 13px;
-    font-style:italic;color:#ff4500;font-family:'DS-Digital',monospace;
-}
-#large-main-time .separator{
-    width:58px;text-align:right;display:inline-block;font-size:1em;
-    font-weight:bold;color:#f00;padding-left:6px;font-family:'DS-Digital',monospace;
-}
+#large-main-time svg{display:block;height:.7485em;width:auto;overflow:visible;}
 #large-sub-label{
     margin-top:15px;color:#fff;font-size:2.2rem;font-weight:bold;
     letter-spacing:2px;text-align:center;opacity:.8;width:100%;
@@ -378,11 +373,7 @@
         <div id="large-alert-bg"></div>
        <div id="large-reset-btn">RESET</div>
         <div id="large-time-container">
-            <div id="large-main-time">
-                <span class="digit">0</span><span class="digit">0</span><span class="separator">:</span>
-                <span class="digit">0</span><span class="digit">0</span><span class="separator">:</span>
-                <span class="digit">0</span><span class="digit">0</span>
-            </div>
+            <div id="large-main-time"></div>
             <div id="large-sub-label">REAL TIME / TIMER</div>
         </div>
     </div>
@@ -443,6 +434,69 @@
     <div class="video-space"></div>
 
     <script>
+        /* ===== 7セグの数字(自作。外部フォントは使わない) =====
+           見た目の調整は、この SEG の数字を変えるだけでできる */
+        const SEG={
+          h:100,       /* 数字の縦の長さ(横幅は56のまま) */
+          T:10,        /* 線の太さ */
+          cut:2.5,     /* 縦線の外側の角を落とす量 */
+          gap:33,      /* 数字の間(2桁の中) */
+          pg:94,       /* 2桁ごとの間(コロンのある所) */
+          sk:6,        /* 傾き(度) */
+          mu:0,        /* むら(%)。線ごとの明るさの差(0で全部同じ明るさ) */
+          dEdge:'#f00f0f', /* 数字の色(線の端)。赤寄り14で決めた色 */
+          dMid:'#ff5b4d',  /* 数字の色(線の真ん中の光る所)。赤寄り14・光のつよさ22で決めた色 */
+          dW:20,       /* 光る幅(%)。真ん中の明るい部分の広さ */
+          cr:9,        /* コロンの大きさ */
+          cs:54,       /* コロンの縦の間 */
+          cy:3,        /* コロンの上下の位置(マイナスで上へ) */
+          cCol:'#c0082e', /* コロンの色 */
+          cGlow:6.25,  /* コロンのにじみの広がり(ぼかしは使わない) */
+          cHalo:.55,   /* コロンのにじみの濃さ(0でにじみなし) */
+          cOff:.2      /* コロンが消えているときの濃さ */
+        };
+        function seg7(box){
+          const NS='http://www.w3.org/2000/svg',W=56,H=SEG.h,G=1.8,M=H/2,T=SEG.T;
+          /* 縦線は外側の角を少し斜めに落とし、横線は台形。縦線と横線は1本の直線の切れ目で合わさる */
+          const P=SEG.cut,D=G*Math.hypot(T-P,T)/T,fx=q=>q.map(([x,y])=>[W-x,y]),fy=q=>q.map(([x,y])=>[x,H-y]);
+          const F=[[0,P],[P,0],[T,T],[T,M-T/2-G],[0,M-G]],A=[[P+D,0],[W-P-D,0],[W-T-D,T],[T+D,T]];
+          const S={a:A,d:fy(A),f:F,b:fx(F),e:fy(F),c:fx(fy(F)),
+            g:[[G,M],[T+G,M-T/2],[W-T-G,M-T/2],[W-G,M],[W-T-G,M+T/2],[T+G,M+T/2]]};
+          const MAP={0:'abcdef',1:'bc',2:'abged',3:'abgcd',4:'fgbc',5:'afgcd',6:'afgedc',7:'abc',8:'abcdefg',9:'abcdfg'};
+          const xs=[],cx=[];let x=0;
+          for(let i=0;i<3;i++){xs.push(x,x+W+SEG.gap);x+=W*2+SEG.gap;if(i<2){cx.push(x+SEG.pg/2);x+=SEG.pg}}
+          const off=Math.tan(SEG.sk*Math.PI/180)*H;
+          const svg=document.createElementNS(NS,'svg');
+          svg.setAttribute('viewBox','-6 -8 '+(x+off+12)+' '+(H+16));svg.setAttribute('aria-hidden','true');
+          /* 線の中のグラデーション:端→真ん中の光る所→端 */
+          const p1=(0.5-SEG.dW/200).toFixed(3),p2=(0.5+SEG.dW/200).toFixed(3);
+          const grad=(id,v)=>'<linearGradient id="'+id+'" x1="0" y1="0" x2="'+(v?0:1)+'" y2="'+(v?1:0)+'"><stop offset="0" stop-color="'+SEG.dEdge+'"/><stop offset="'+p1+'" stop-color="'+SEG.dMid+'"/><stop offset="'+p2+'" stop-color="'+SEG.dMid+'"/><stop offset="1" stop-color="'+SEG.dEdge+'"/></linearGradient>';
+          svg.innerHTML='<defs>'+grad('sgH',0)+grad('sgV',1)+
+            '<radialGradient id="sgR"><stop offset="0" stop-color="'+SEG.cCol+'" stop-opacity="'+SEG.cHalo+'"/><stop offset=".45" stop-color="'+SEG.cCol+'" stop-opacity="'+(SEG.cHalo*.45)+'"/><stop offset="1" stop-color="'+SEG.cCol+'" stop-opacity="0"/></radialGradient></defs>';
+          let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
+          const digs=xs.map(x0=>{
+            const g=document.createElementNS(NS,'g');
+            g.setAttribute('transform','translate('+(x0+off)+',0) skewX(-'+SEG.sk+')');
+            const d={};
+            Object.entries(S).forEach(([k,pts])=>{const q=document.createElementNS(NS,'polygon');q.setAttribute('points',pts.map(z=>z.join(',')).join(' '));q.setAttribute('fill','url(#'+('agd'.includes(k)?'sgH':'sgV')+')');q.style.opacity=0;d[k]=[q,(1-SEG.mu/100+rnd()*SEG.mu/100).toFixed(3)];g.appendChild(q)});
+            svg.appendChild(g);return d;
+          });
+          const cols=cx.map(c0=>{
+            const g=document.createElementNS(NS,'g');
+            [M+SEG.cy-SEG.cs/2,M+SEG.cy+SEG.cs/2].forEach(y=>{
+              const h=document.createElementNS(NS,'circle');h.setAttribute('cx',c0+off/2);h.setAttribute('cy',y);h.setAttribute('r',SEG.cr+SEG.cGlow*2.4);h.setAttribute('fill','url(#sgR)');g.appendChild(h);
+              const c=document.createElementNS(NS,'circle');c.setAttribute('cx',c0+off/2);c.setAttribute('cy',y);c.setAttribute('r',SEG.cr);c.setAttribute('fill',SEG.cCol);g.appendChild(c)});
+            svg.appendChild(g);return g;
+          });
+          box.textContent='';box.appendChild(svg);
+          let last='';
+          return{
+            /* s は6文字の数字(例 "001234") */
+            set(s){if(s===last)return;last=s;digs.forEach((d,i)=>{const on=MAP[s[i]]||'';Object.entries(d).forEach(([k,[q,b]])=>{q.style.opacity=on.includes(k)?b:0})})},
+            colon(on){cols.forEach(g=>g.style.opacity=on?1:SEG.cOff)}
+          };
+        }
+
         let swRunning = false, swStartTime = 0, swElapsedMs = 0, swInterval = null;
 
         // ===== 独立 STOPWATCH / LARGE =====
@@ -452,6 +506,9 @@
         const addedSWInput=document.getElementById('sw-input');
         const addedLarge=document.getElementById('large-sw-overlay');
         const addedLargeMain=document.getElementById('large-main-time');
+        /* 大画面の数字(7セグ)を作る */
+        const SG=seg7(addedLargeMain);
+        SG.set('000000'); SG.colon(false);
         const addedLever=document.getElementById('lever-knob');
         const addedModeSelector=document.getElementById('mode-selector');
         const addedSWOverlay=document.getElementById('sw-overlay');
@@ -575,6 +632,7 @@
    if(secondInHour >= 55 * 60 && secondInHour < 58 * 60){
     document.getElementById('large-alert-bg').style.background = 'radial-gradient(circle,#1685ff 0%,#0066ff 45%,#003080 100%)';
 document.getElementById('large-alert-bg').style.boxShadow = 'inset 0 0 80px #0088FF, 0 0 80px #0088FF';
+       document.getElementById('large-main-time').style.boxShadow = '';   // 青のときは、ふだんと同じ小さい光
 }else if(secondInHour >= 58 * 60 && secondInHour < 3600){
     document.getElementById('large-alert-bg').style.background = 'radial-gradient(circle,#ff8a9a 0%,#ff1744 45%,#ff0033 70%,#990020 100%)';
 document.getElementById('large-alert-bg').style.boxShadow = 'inset 0 0 80px #FF3355, 0 0 80px #FF0033';
@@ -582,7 +640,7 @@ document.getElementById('large-alert-bg').style.boxShadow = 'inset 0 0 80px #FF3
 }else{
     document.getElementById('large-alert-bg').style.background = '#000';
 document.getElementById('large-alert-bg').style.boxShadow = 'none';
-       document.getElementById('large-main-time').style.boxShadow = 'none';
+       document.getElementById('large-main-time').style.boxShadow = '';   // ふだんは小さい光(CSSのまま)
 }
 }
         function updateAddedSWDisplay(){
@@ -591,28 +649,20 @@ document.getElementById('large-alert-bg').style.boxShadow = 'none';
             addedSWMain.textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
             addedSWMain.classList.toggle('running-text',addedSwRunning);
             const t=String(h).padStart(2,'0')+String(m).padStart(2,'0')+String(sec).padStart(2,'0');
-            addedLargeMain.querySelectorAll('.digit').forEach((el,i)=>el.textContent=t[i]);
+            SG.set(t);
 
             if(addedSwRunning && sec!==addedLastBlinkSecond){
                 addedLastBlinkSecond=sec;
-                addedLargeMain.querySelectorAll('.separator').forEach(el=>{
-                    el.style.opacity='1';
-                    el.style.color='#ff2222';
-                    el.style.textShadow='0 0 8px rgba(255,0,0,.9),0 0 16px rgba(255,0,0,.55)';
-                });
+                // コロン:秒が変わったら点けて、0.5秒後にうっすら
+                SG.colon(true);
                 setTimeout(()=>{
                     if(!addedSwRunning)return;
-                    addedLargeMain.querySelectorAll('.separator').forEach(el=>{
-                        el.style.opacity='0.2';
-                        el.style.textShadow='none';
-                    });
+                    SG.colon(false);
                 },500);
             }
             if(!addedSwRunning){
-                addedLargeMain.querySelectorAll('.separator').forEach(el=>{
-                    el.style.opacity='0.2';
-                    el.style.textShadow='none';
-                });
+                // 止まっているときは、コロンうっすら(今の動きのまま)
+                SG.colon(false);
             }
         }
         let addedLastBlinkSecond=-1;
